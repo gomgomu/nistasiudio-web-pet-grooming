@@ -1,0 +1,1560 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -----------------------------------------------------------------------------
+// 1. Tenant & Organization
+// -----------------------------------------------------------------------------
+
+enum BusinessType {
+  VETERINARY_CLINIC
+  PET_HOSPITAL
+  GROOMING_SALON
+  HYBRID_CLINIC_GROOMING
+  PET_HOTEL
+  PET_SHOP
+}
+
+model Tenant {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String       @db.VarChar(255)
+  slug         String       @unique @db.VarChar(100)
+  businessType BusinessType @default(HYBRID_CLINIC_GROOMING) @map("business_type")
+  phone        String?      @db.VarChar(50)
+  email        String?      @db.VarChar(255)
+  timezone     String       @default("Asia/Bangkok") @db.VarChar(50)
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  branches               Branch[]
+  users                  User[]
+  customers              Customer[]
+  pets                   Pet[]
+  services               Service[]
+  serviceCategories      ServiceCategory[]
+  appointments           Appointment[]
+  groomingQueueItems     GroomingQueueItem[]
+  clinicVisits           ClinicVisit[]
+  invoices               Invoice[]
+  payments               Payment[]
+  products               Product[]
+  productCategories      ProductCategory[]
+  productLots            ProductLot[]
+  inventoryTransactions  InventoryTransaction[]
+  suppliers              Supplier[]
+  purchases              Purchase[]
+  staffCommissions       StaffCommission[]
+  staffProfiles          StaffProfile[]
+  staffSchedules         StaffSchedule[]
+  staffLeaves            StaffLeave[]
+  blockedTimes           BlockedTime[]
+  servicePriceRules      ServicePriceRule[]
+  groomingProfiles       GroomingProfile[]
+  groomingPhotos         GroomingPhoto[]
+  tags                   Tag[]
+  consents               Consent[]
+  notifications          Notification[]
+  notificationTemplates  NotificationTemplate[]
+  notificationPreferences NotificationPreference[]
+  lineInboundMessages    LineInboundMessage[]
+  campaigns              Campaign[]
+  subscriptions          Subscription[]
+  auditLogs              AuditLog[]
+  clinicAttachments      ClinicAttachment[]
+  prescriptions          Prescription[]
+  vaccinations           PetVaccination[]
+  featureOverrides       TenantFeatureOverride[]
+  usageRecords           TenantUsageRecord[]
+  usageSummaries         TenantUsageSummary[]
+
+  @@map("tenants")
+}
+
+model Branch {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(255)
+  code      String   @db.VarChar(50)
+  address   String?  @db.Text
+  phone     String?  @db.VarChar(50)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userBranches           UserBranch[]
+  services               Service[]
+  staffSchedules         StaffSchedule[]
+  blockedTimes           BlockedTime[]
+  appointments           Appointment[]
+  groomingQueueItems     GroomingQueueItem[]
+  clinicVisits           ClinicVisit[]
+  invoices               Invoice[]
+  payments               Payment[]
+  productLots            ProductLot[]
+  inventoryTransactions  InventoryTransaction[]
+  purchases              Purchase[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("branches")
+}
+
+// -----------------------------------------------------------------------------
+// 2. Identity & Access Management (IAM)
+// -----------------------------------------------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_OWNER
+  TENANT_ADMIN
+  BRANCH_MANAGER
+  VETERINARIAN
+  GROOMER
+  RECEPTIONIST
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  INACTIVE
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @map("tenant_id") @db.Uuid
+  email        String     @db.VarChar(255)
+  passwordHash String     @map("password_hash") @db.VarChar(255)
+  firstName    String     @map("first_name") @db.VarChar(100)
+  lastName     String     @map("last_name") @db.VarChar(100)
+  role         UserRole   @default(STAFF)
+  status       UserStatus @default(ACTIVE)
+  phone        String?    @db.VarChar(50)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userBranches        UserBranch[]
+  assignedAppointments Appointment[]      @relation("AssignedStaff")
+  createdAppointments  Appointment[]      @relation("AppointmentCreator")
+  groomedQueueItems   GroomingQueueItem[] @relation("AssignedGroomer")
+  preferredGroomerProfiles GroomingProfile[] @relation("PreferredGroomer")
+  attendedClinicVisits ClinicVisit[]      @relation("AttendingVet")
+  createdPetNotes     PetNote[]           @relation("NoteCreator")
+  staffProfile        StaffProfile?
+  staffSchedules      StaffSchedule[]
+  staffLeaves         StaffLeave[]
+  blockedTimes        BlockedTime[]
+  commissions         StaffCommission[]
+  auditLogs           AuditLog[]
+  issuedInvoices      Invoice[]           @relation("InvoiceIssuer")
+  recordedPayments    Payment[]           @relation("PaymentRecorder")
+  performedInvoiceItems InvoiceItem[]     @relation("InvoiceItemStaff")
+  dispensedPrescriptions Prescription[]   @relation("DispensedStaff")
+  administeredVaccinations PetVaccination[] @relation("AdministeringVet")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model UserBranch {
+  userId   String @map("user_id") @db.Uuid
+  branchId String @map("branch_id") @db.Uuid
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+  @@map("user_branches")
+}
+
+enum StaffType {
+  VETERINARIAN
+  GROOMER
+  VET_ASSISTANT
+  RECEPTIONIST
+  BRANCH_MANAGER
+  GENERAL_STAFF
+}
+
+model StaffProfile {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  userId        String    @unique @map("user_id") @db.Uuid
+  nickname      String?   @db.VarChar(100)
+  staffType     StaffType @default(GENERAL_STAFF) @map("staff_type")
+  specialties   String[]  @default([])
+  licenseNumber String?   @map("license_number") @db.VarChar(100)
+  bio           String?   @db.Text
+  colorCode     String?   @map("color_code") @db.VarChar(20)
+  avatarUrl     String?   @map("avatar_url") @db.VarChar(500)
+  isBookable    Boolean   @default(true) @map("is_bookable")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, staffType])
+  @@index([tenantId, isBookable])
+  @@map("staff_profiles")
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum LeaveType {
+  VACATION
+  SICK
+  PERSONAL
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model StaffSchedule {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  branchId       String?   @map("branch_id") @db.Uuid
+  dayOfWeek      DayOfWeek @map("day_of_week")
+  startTime      String    @map("start_time") @db.VarChar(10)
+  endTime        String    @map("end_time") @db.VarChar(10)
+  breakStartTime String?   @map("break_start_time") @db.VarChar(10)
+  breakEndTime   String?   @map("break_end_time") @db.VarChar(10)
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, userId, dayOfWeek, branchId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([branchId])
+  @@map("staff_schedules")
+}
+
+model StaffLeave {
+  id        String      @id @default(uuid()) @db.Uuid
+  tenantId  String      @map("tenant_id") @db.Uuid
+  userId    String      @map("user_id") @db.Uuid
+  leaveType LeaveType   @default(PERSONAL) @map("leave_type")
+  status    LeaveStatus @default(APPROVED)
+  startDate DateTime    @map("start_date") @db.Date
+  endDate   DateTime    @map("end_date") @db.Date
+  reason    String?     @db.Text
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, startDate, endDate])
+  @@map("staff_leaves")
+}
+
+model BlockedTime {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  title     String   @db.VarChar(255)
+  startAt   DateTime @map("start_at")
+  endAt     DateTime @map("end_at")
+  isAllDay  Boolean  @default(false) @map("is_all_day")
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([userId])
+  @@index([tenantId, startAt, endAt])
+  @@map("blocked_times")
+}
+
+// -----------------------------------------------------------------------------
+// 3. Customer & Pet CRM
+// -----------------------------------------------------------------------------
+
+enum MarketingStatus {
+  OPTED_IN
+  OPTED_OUT
+  PENDING
+}
+
+model Customer {
+  id              String          @id @default(uuid()) @db.Uuid
+  tenantId        String          @map("tenant_id") @db.Uuid
+  firstName       String          @map("first_name") @db.VarChar(100)
+  lastName        String          @map("last_name") @db.VarChar(100)
+  phone           String          @db.VarChar(50)
+  email           String?         @db.VarChar(255)
+  lineUserId      String?         @map("line_user_id") @db.VarChar(100)
+  address         String?         @db.Text
+  notes           String?         @db.Text
+  marketingStatus MarketingStatus @default(OPTED_IN) @map("marketing_status")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pets               Pet[]
+  appointments       Appointment[]
+  groomingQueueItems GroomingQueueItem[]
+  invoices           Invoice[]
+  customerTags       CustomerTag[]
+  consents           Consent[]
+  notifications      Notification[]
+  notificationPreferences NotificationPreference?
+  campaignRecipients CampaignRecipient[]
+  clinicVisits       ClinicVisit[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([tenantId, phone])
+  @@index([tenantId, createdAt])
+  @@map("customers")
+}
+
+enum PetSpecies {
+  DOG
+  CAT
+  BIRD
+  RABBIT
+  OTHER
+}
+
+enum PetSex {
+  MALE
+  FEMALE
+  NEUTERED_MALE
+  SPAYED_FEMALE
+  UNKNOWN
+}
+
+model Pet {
+  id                  String     @id @default(uuid()) @db.Uuid
+  tenantId            String     @map("tenant_id") @db.Uuid
+  customerId          String     @map("customer_id") @db.Uuid
+  name                String     @db.VarChar(100)
+  species             PetSpecies @default(DOG)
+  breed               String?    @db.VarChar(100)
+  sex                 PetSex     @default(UNKNOWN)
+  birthDate           DateTime?  @map("birth_date") @db.Date
+  weight              Decimal?   @db.Decimal(5, 2)
+  microchipNumber     String?    @map("microchip_number") @db.VarChar(100)
+  allergies           String?    @db.Text
+  behavioralNotes     String?    @map("behavioral_notes") @db.Text
+  specialRequirements String?    @map("special_requirements") @db.Text
+  photoUrl            String?    @map("photo_url") @db.VarChar(500)
+  isActive            Boolean    @default(true) @map("is_active")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer           Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  petNotes           PetNote[]
+  medicalRecords     PetMedicalRecord[]
+  vaccinations       PetVaccination[]
+  groomingProfile    GroomingProfile?
+  appointments       Appointment[]
+  groomingQueueItems GroomingQueueItem[]
+  clinicVisits       ClinicVisit[]
+  invoices           Invoice[]
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([tenantId, customerId])
+  @@map("pets")
+}
+
+model PetNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  petId     String   @map("pet_id") @db.Uuid
+  createdBy String?  @map("created_by") @db.Uuid
+  type      String   @default("GENERAL") @db.VarChar(50)
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pet     Pet   @relation(fields: [petId], references: [id], onDelete: Cascade)
+  creator User? @relation("NoteCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([petId])
+  @@map("pet_notes")
+}
+
+model GroomingProfile {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  petId              String   @unique @map("pet_id") @db.Uuid
+  preferredCut       String?  @map("preferred_cut") @db.Text
+  shampoo            String?  @db.VarChar(100)
+  warnings           String?  @db.Text
+  behaviorNotes      String?  @map("behavior_notes") @db.Text
+  preferredGroomerId String?  @map("preferred_groomer_id") @db.Uuid
+  specialHandling    String?  @map("special_handling") @db.Text
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant           Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pet              Pet     @relation(fields: [petId], references: [id], onDelete: Cascade)
+  preferredGroomer User?   @relation("PreferredGroomer", fields: [preferredGroomerId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([petId])
+  @@index([preferredGroomerId])
+  @@map("grooming_profiles")
+}
+
+// -----------------------------------------------------------------------------
+// 4. Services, Staff Availability & Scheduling
+// -----------------------------------------------------------------------------
+
+model ServiceCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  services Service[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("service_categories")
+}
+
+model Service {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  branchId        String?  @map("branch_id") @db.Uuid
+  categoryId      String?  @map("category_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  category        String   @default("GROOMING") @db.VarChar(100)
+  durationMinutes Int      @default(60) @map("duration_minutes")
+  basePriceMinor  BigInt   @default(0) @map("base_price_minor")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch             Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  serviceCategory    ServiceCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  priceRules         ServicePriceRule[]
+  appointments       Appointment[]
+  groomingQueueItems GroomingQueueItem[]
+  invoiceItems       InvoiceItem[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("services")
+}
+
+model ServicePriceRule {
+  id              String     @id @default(uuid()) @db.Uuid
+  tenantId        String     @map("tenant_id") @db.Uuid
+  serviceId       String     @map("service_id") @db.Uuid
+  species         PetSpecies @default(DOG)
+  name            String?    @db.VarChar(100)
+  minWeight       Decimal?   @map("min_weight") @db.Decimal(5, 2)
+  maxWeight       Decimal?   @map("max_weight") @db.Decimal(5, 2)
+  priceMinor      BigInt     @default(0) @map("price_minor")
+  durationMinutes Int?       @map("duration_minutes")
+  isActive        Boolean    @default(true) @map("is_active")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([serviceId])
+  @@index([tenantId, serviceId, species])
+  @@map("service_price_rules")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AppointmentSource {
+  WALK_IN
+  PHONE
+  LINE
+  ONLINE_BOOKING
+  OTHER
+}
+
+model Appointment {
+  id                 String            @id @default(uuid()) @db.Uuid
+  tenantId           String            @map("tenant_id") @db.Uuid
+  branchId           String            @map("branch_id") @db.Uuid
+  customerId         String            @map("customer_id") @db.Uuid
+  petId              String            @map("pet_id") @db.Uuid
+  serviceId          String            @map("service_id") @db.Uuid
+  staffId            String?           @map("staff_id") @db.Uuid
+  createdById        String?           @map("created_by_id") @db.Uuid
+  startAt            DateTime          @map("start_at")
+  endAt              DateTime          @map("end_at")
+  status             AppointmentStatus @default(PENDING)
+  source             AppointmentSource @default(PHONE)
+  priceMinor         BigInt?           @map("price_minor")
+  notes              String?           @db.Text
+  cancellationReason String?           @map("cancellation_reason") @db.Text
+  checkedInAt        DateTime?         @map("checked_in_at")
+  completedAt        DateTime?         @map("completed_at")
+  cancelledAt        DateTime?         @map("cancelled_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch            Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  customer          Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  pet               Pet                @relation(fields: [petId], references: [id], onDelete: Cascade)
+  service           Service            @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  assignedStaff     User?              @relation("AssignedStaff", fields: [staffId], references: [id], onDelete: SetNull)
+  createdByUser     User?              @relation("AppointmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  groomingQueueItem GroomingQueueItem?
+  clinicVisits      ClinicVisit[]
+  invoices          Invoice[]
+  notifications     Notification[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([tenantId, branchId, startAt])
+  @@index([tenantId, branchId, staffId, startAt, endAt, status])
+  @@index([customerId])
+  @@index([petId])
+  @@index([startAt])
+  @@index([status])
+  @@map("appointments")
+}
+
+// -----------------------------------------------------------------------------
+// 5. Grooming Queue
+// -----------------------------------------------------------------------------
+
+enum GroomingQueueStatus {
+  WAITING
+  BATHING
+  DRYING
+  GROOMING
+  FINISHING
+  READY
+  PICKED_UP
+  CANCELLED
+}
+
+enum GroomingPhotoType {
+  BEFORE
+  AFTER
+  INJURY_PRE_EXISTING
+  PROGRESS
+}
+
+model GroomingQueueItem {
+  id                       String              @id @default(uuid()) @db.Uuid
+  tenantId                 String              @map("tenant_id") @db.Uuid
+  branchId                 String              @map("branch_id") @db.Uuid
+  customerId               String              @map("customer_id") @db.Uuid
+  petId                    String              @map("pet_id") @db.Uuid
+  serviceId                String              @map("service_id") @db.Uuid
+  appointmentId            String?             @unique @map("appointment_id") @db.Uuid
+  groomerId                String?             @map("groomer_id") @db.Uuid
+  queueNumber              Int                 @map("queue_number")
+  status                   GroomingQueueStatus @default(WAITING)
+  specialCareNotes         String?             @map("special_care_notes") @db.Text
+  weightKg                 Decimal?            @map("weight_kg") @db.Decimal(5, 2)
+  estimatedDurationMinutes Int                 @default(60) @map("estimated_duration_minutes")
+  actualDurationMinutes    Int?                @map("actual_duration_minutes")
+  priceMinor               BigInt?             @map("price_minor")
+  startedAt                DateTime?           @map("started_at")
+  bathingStartedAt         DateTime?           @map("bathing_started_at")
+  dryingStartedAt          DateTime?           @map("drying_started_at")
+  groomingStartedAt        DateTime?           @map("grooming_started_at")
+  finishingStartedAt       DateTime?           @map("finishing_started_at")
+  readyAt                  DateTime?           @map("ready_at")
+  pickedUpAt               DateTime?           @map("picked_up_at")
+  cancelledAt              DateTime?           @map("cancelled_at")
+  cancellationReason       String?             @map("cancellation_reason") @db.Text
+  createdAt                DateTime            @default(now()) @map("created_at")
+  updatedAt                DateTime            @updatedAt @map("updated_at")
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  customer    Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  pet         Pet             @relation(fields: [petId], references: [id], onDelete: Cascade)
+  service     Service         @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  appointment Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  groomer     User?           @relation("AssignedGroomer", fields: [groomerId], references: [id], onDelete: SetNull)
+  photos      GroomingPhoto[]
+  invoices    Invoice[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId, status])
+  @@index([tenantId, branchId, createdAt])
+  @@index([customerId])
+  @@index([petId])
+  @@index([groomerId])
+  @@map("grooming_queue_items")
+}
+
+model GroomingPhoto {
+  id          String            @id @default(uuid()) @db.Uuid
+  tenantId    String            @map("tenant_id") @db.Uuid
+  queueItemId String            @map("queue_item_id") @db.Uuid
+  type        GroomingPhotoType @default(BEFORE)
+  photoUrl    String            @map("photo_url") @db.VarChar(500)
+  caption     String?           @db.VarChar(255)
+  uploadedAt  DateTime          @default(now()) @map("uploaded_at")
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  queueItem GroomingQueueItem @relation(fields: [queueItemId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([queueItemId])
+  @@map("grooming_photos")
+}
+
+// -----------------------------------------------------------------------------
+// 6. Veterinary Clinic Workflows
+// -----------------------------------------------------------------------------
+
+enum ClinicVisitStatus {
+  SCHEDULED
+  WAITING
+  IN_CONSULTATION
+  EXAMINATION
+  TREATMENT
+  COMPLETED
+  CANCELLED
+}
+
+enum ClinicVisitType {
+  GENERAL_CHECKUP
+  VACCINATION
+  SICK_VISIT
+  FOLLOW_UP
+  SURGERY
+  DENTAL
+  EMERGENCY
+  GROOMING_HEALTH_CHECK
+}
+
+model ClinicVisit {
+  id                    String            @id @default(uuid()) @db.Uuid
+  tenantId              String            @map("tenant_id") @db.Uuid
+  branchId              String            @map("branch_id") @db.Uuid
+  appointmentId         String?           @map("appointment_id") @db.Uuid
+  customerId            String            @map("customer_id") @db.Uuid
+  petId                 String            @map("pet_id") @db.Uuid
+  veterinarianId        String?           @map("veterinarian_id") @db.Uuid
+  visitNumber           String?           @map("visit_number") @db.VarChar(50)
+  status                ClinicVisitStatus @default(WAITING)
+  visitType             ClinicVisitType   @default(GENERAL_CHECKUP) @map("visit_type")
+  chiefComplaint        String?           @map("chief_complaint") @db.Text
+  symptoms              String?           @db.Text
+  diagnosis             String?           @db.Text
+  differentialDiagnosis String?           @map("differential_diagnosis") @db.Text
+  weightKg              Decimal?          @map("weight_kg") @db.Decimal(5, 2)
+  temperatureC          Decimal?          @map("temperature_c") @db.Decimal(4, 1)
+  heartRateBpm          Int?              @map("heart_rate_bpm")
+  respiratoryRateBpm    Int?              @map("respiratory_rate_bpm")
+  capillaryRefillTime   String?           @map("capillary_refill_time") @db.VarChar(50)
+  mucousMembrane        String?           @map("mucous_membrane") @db.VarChar(100)
+  bodyConditionScore    Int?              @map("body_condition_score")
+  subjective            String?           @db.Text
+  objective             String?           @db.Text
+  assessment            String?           @db.Text
+  plan                  String?           @db.Text
+  treatmentSummary      String?           @map("treatment_summary") @db.Text
+  dischargeNotes        String?           @map("discharge_notes") @db.Text
+  followUpDate          DateTime?         @map("follow_up_date") @db.Date
+  followUpReason        String?           @map("follow_up_reason") @db.VarChar(255)
+  visitedAt             DateTime          @default(now()) @map("visited_at")
+  completedAt           DateTime?         @map("completed_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  customer       Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  pet            Pet                @relation(fields: [petId], references: [id], onDelete: Cascade)
+  appointment    Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  veterinarian   User?              @relation("AttendingVet", fields: [veterinarianId], references: [id], onDelete: SetNull)
+  prescriptions  Prescription[]
+  treatments     Treatment[]
+  vaccinations   PetVaccination[]
+  medicalRecords PetMedicalRecord[]
+  attachments    ClinicAttachment[]
+  invoices       Invoice[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId, status])
+  @@index([tenantId, petId])
+  @@index([tenantId, customerId])
+  @@index([tenantId, visitedAt])
+  @@map("clinic_visits")
+}
+
+enum ClinicAttachmentType {
+  WOUND_PHOTO
+  LAB_RESULT
+  XRAY
+  ULTRASOUND
+  PRESCRIPTION_SLIP
+  OTHER
+}
+
+model ClinicAttachment {
+  id             String               @id @default(uuid()) @db.Uuid
+  tenantId       String               @map("tenant_id") @db.Uuid
+  clinicVisitId  String               @map("clinic_visit_id") @db.Uuid
+  attachmentType ClinicAttachmentType @default(WOUND_PHOTO) @map("attachment_type")
+  fileUrl        String               @map("file_url") @db.VarChar(500)
+  fileName       String?              @map("file_name") @db.VarChar(255)
+  caption        String?              @db.VarChar(255)
+  uploadedAt     DateTime             @default(now()) @map("uploaded_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clinicVisit ClinicVisit @relation(fields: [clinicVisitId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([clinicVisitId])
+  @@map("clinic_attachments")
+}
+
+model Prescription {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  clinicVisitId  String    @map("clinic_visit_id") @db.Uuid
+  productId      String?   @map("product_id") @db.Uuid
+  medicationName String    @map("medication_name") @db.VarChar(255)
+  genericName    String?   @map("generic_name") @db.VarChar(255)
+  dosageForm     String?   @map("dosage_form") @db.VarChar(50)
+  strength       String?   @db.VarChar(100)
+  dosagePerKg    Decimal?  @map("dosage_per_kg") @db.Decimal(8, 2)
+  calculatedDose String?   @map("calculated_dose") @db.VarChar(100)
+  route          String?   @db.VarChar(50)
+  frequency      String?   @db.VarChar(100)
+  duration       String?   @db.VarChar(100)
+  quantity       Decimal   @default(1) @db.Decimal(8, 2)
+  unit           String?   @db.VarChar(50)
+  instruction    String?   @db.Text
+  cautionNotes   String?   @map("caution_notes") @db.Text
+  priceMinor     BigInt    @default(0) @map("price_minor")
+  isDispensed    Boolean   @default(false) @map("is_dispensed")
+  dispensedAt    DateTime? @map("dispensed_at")
+  dispensedById  String?   @map("dispensed_by_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clinicVisit ClinicVisit @relation(fields: [clinicVisitId], references: [id], onDelete: Cascade)
+  product     Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  dispensedBy User?       @relation("DispensedStaff", fields: [dispensedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([clinicVisitId])
+  @@index([productId])
+  @@map("prescriptions")
+}
+
+model Treatment {
+  id            String   @id @default(uuid()) @db.Uuid
+  clinicVisitId String   @map("clinic_visit_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  notes         String?  @db.Text
+  priceMinor    BigInt   @default(0) @map("price_minor")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  clinicVisit ClinicVisit @relation(fields: [clinicVisitId], references: [id], onDelete: Cascade)
+
+  @@index([clinicVisitId])
+  @@map("treatments")
+}
+
+enum VaccineType {
+  DOG_CORE_5_IN_1
+  DOG_CORE_6_IN_1
+  DOG_RABIES
+  DOG_KENNEL_COUGH
+  CAT_CORE_3_IN_1
+  CAT_CORE_4_IN_1
+  CAT_RABIES
+  CAT_LEUKEMIA
+  OTHER
+}
+
+model PetVaccination {
+  id                String      @id @default(uuid()) @db.Uuid
+  tenantId          String      @map("tenant_id") @db.Uuid
+  petId             String      @map("pet_id") @db.Uuid
+  clinicVisitId     String?     @map("clinic_visit_id") @db.Uuid
+  productId         String?     @map("product_id") @db.Uuid
+  administeredById  String?     @map("administered_by_id") @db.Uuid
+  vaccineType       VaccineType @default(OTHER) @map("vaccine_type")
+  vaccineName       String      @map("vaccine_name") @db.VarChar(255)
+  manufacturer      String?     @db.VarChar(150)
+  lotNumber         String?     @map("lot_number") @db.VarChar(100)
+  administeredAt    DateTime    @default(now()) @map("administered_at")
+  nextDueAt         DateTime?   @map("next_due_at") @db.Date
+  weightKg          Decimal?    @map("weight_kg") @db.Decimal(5, 2)
+  temperatureC      Decimal?    @map("temperature_c") @db.Decimal(4, 1)
+  siteOfInjection   String?     @map("site_of_injection") @db.VarChar(100)
+  certificateNumber String?     @map("certificate_number") @db.VarChar(100)
+  isCompleted       Boolean     @default(true) @map("is_completed")
+  reminderSent      Boolean     @default(false) @map("reminder_sent")
+  reminderSentAt    DateTime?   @map("reminder_sent_at")
+  notes             String?     @db.Text
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pet            Pet          @relation(fields: [petId], references: [id], onDelete: Cascade)
+  clinicVisit    ClinicVisit? @relation(fields: [clinicVisitId], references: [id], onDelete: SetNull)
+  product        Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  administeredBy User?        @relation("AdministeringVet", fields: [administeredById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([petId])
+  @@index([clinicVisitId])
+  @@index([nextDueAt])
+  @@index([tenantId, nextDueAt])
+  @@map("pet_vaccinations")
+}
+
+model PetMedicalRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  petId         String   @map("pet_id") @db.Uuid
+  clinicVisitId String?  @map("clinic_visit_id") @db.Uuid
+  recordType    String   @default("SOAP") @map("record_type") @db.VarChar(50)
+  content       String   @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  pet         Pet          @relation(fields: [petId], references: [id], onDelete: Cascade)
+  clinicVisit ClinicVisit? @relation(fields: [clinicVisitId], references: [id], onDelete: SetNull)
+
+  @@index([petId])
+  @@map("pet_medical_records")
+}
+
+// -----------------------------------------------------------------------------
+// 7. POS & Invoicing
+// -----------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  DRAFT
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+enum InvoiceItemType {
+  SERVICE
+  PRODUCT
+  MEDICATION
+  CUSTOM
+}
+
+model Invoice {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  branchId        String        @map("branch_id") @db.Uuid
+  customerId      String        @map("customer_id") @db.Uuid
+  petId           String?       @map("pet_id") @db.Uuid
+  appointmentId   String?       @map("appointment_id") @db.Uuid
+  queueItemId     String?       @map("queue_item_id") @db.Uuid
+  clinicVisitId   String?       @map("clinic_visit_id") @db.Uuid
+  invoiceNo       String        @map("invoice_no") @db.VarChar(100)
+  status          InvoiceStatus @default(UNPAID)
+  subtotalMinor   BigInt        @default(0) @map("subtotal_minor")
+  discountMinor   BigInt        @default(0) @map("discount_minor")
+  taxMinor        BigInt        @default(0) @map("tax_minor")
+  totalMinor      BigInt        @default(0) @map("total_minor")
+  paidAmountMinor BigInt        @default(0) @map("paid_amount_minor")
+  notes           String?       @db.Text
+  issuedById      String?       @map("issued_by_id") @db.Uuid
+  paidAt          DateTime?     @map("paid_at")
+  voidedAt        DateTime?     @map("voided_at")
+  voidReason      String?       @map("void_reason") @db.Text
+  issuedAt        DateTime      @default(now()) @map("issued_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch           Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  customer         Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  pet              Pet?               @relation(fields: [petId], references: [id], onDelete: SetNull)
+  appointment      Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  queueItem        GroomingQueueItem? @relation(fields: [queueItemId], references: [id], onDelete: SetNull)
+  clinicVisit      ClinicVisit?       @relation(fields: [clinicVisitId], references: [id], onDelete: SetNull)
+  issuedBy         User?              @relation("InvoiceIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+  items            InvoiceItem[]
+  payments         Payment[]
+  staffCommissions StaffCommission[]
+
+  @@unique([tenantId, invoiceNo])
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([tenantId, branchId, status])
+  @@index([customerId])
+  @@index([petId])
+  @@index([appointmentId])
+  @@index([queueItemId])
+  @@index([clinicVisitId])
+  @@index([issuedAt])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id             String          @id @default(uuid()) @db.Uuid
+  invoiceId      String          @map("invoice_id") @db.Uuid
+  itemType       InvoiceItemType @default(SERVICE) @map("item_type")
+  serviceId      String?         @map("service_id") @db.Uuid
+  productId      String?         @map("product_id") @db.Uuid
+  staffId        String?         @map("staff_id") @db.Uuid
+  description    String          @db.VarChar(255)
+  quantity       Decimal         @default(1) @db.Decimal(8, 2)
+  unitPriceMinor BigInt          @default(0) @map("unit_price_minor")
+  discountMinor  BigInt          @default(0) @map("discount_minor")
+  taxRate        Decimal         @default(7.00) @map("tax_rate") @db.Decimal(5, 2)
+  totalMinor     BigInt          @default(0) @map("total_minor")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  service Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  staff   User?    @relation("InvoiceItemStaff", fields: [staffId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@index([serviceId])
+  @@index([productId])
+  @@index([staffId])
+  @@map("invoice_items")
+}
+
+enum PaymentMethodType {
+  CASH
+  PROMPTPAY
+  CREDIT_CARD
+  BANK_TRANSFER
+  OTHER
+}
+
+model Payment {
+  id                  String            @id @default(uuid()) @db.Uuid
+  tenantId            String            @map("tenant_id") @db.Uuid
+  branchId            String            @map("branch_id") @db.Uuid
+  invoiceId           String            @map("invoice_id") @db.Uuid
+  method              PaymentMethodType @default(CASH)
+  amountMinor         BigInt            @default(0) @map("amount_minor")
+  receivedAmountMinor BigInt?           @map("received_amount_minor")
+  changeMinor         BigInt?           @map("change_minor")
+  reference           String?           @db.VarChar(100)
+  notes               String?           @db.Text
+  recordedById        String?           @map("recorded_by_id") @db.Uuid
+  paidAt              DateTime          @default(now()) @map("paid_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  recordedBy User?   @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([invoiceId])
+  @@index([paidAt])
+  @@map("payments")
+}
+
+model StaffCommission {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.Uuid
+  basis       String   @default("SERVICE") @db.VarChar(50)
+  rate        Decimal  @db.Decimal(5, 2)
+  amountMinor BigInt   @default(0) @map("amount_minor")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([invoiceId])
+  @@map("staff_commissions")
+}
+
+// -----------------------------------------------------------------------------
+// 8. Inventory & Products
+// -----------------------------------------------------------------------------
+
+model ProductCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("product_categories")
+}
+
+model Product {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  categoryId         String?  @map("category_id") @db.Uuid
+  sku                String   @db.VarChar(100)
+  barcode            String?  @db.VarChar(100)
+  name               String   @db.VarChar(255)
+  category           String   @default("GENERAL") @db.VarChar(100)
+  unit               String   @default("ชิ้น") @db.VarChar(50)
+  costMinor          BigInt   @default(0) @map("cost_minor")
+  salePriceMinor     BigInt   @default(0) @map("sale_price_minor")
+  taxRate            Decimal  @default(7.00) @map("tax_rate") @db.Decimal(5, 2)
+  reorderPoint       Int      @default(5) @map("reorder_point")
+  description        String?  @db.Text
+  isPrescriptionOnly Boolean  @default(false) @map("is_prescription_only")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productCategory       ProductCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  invoiceItems          InvoiceItem[]
+  purchaseItems         PurchaseItem[]
+  inventoryTransactions InventoryTransaction[]
+  lots                  ProductLot[]
+  prescriptions         Prescription[]
+  vaccinations          PetVaccination[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@index([tenantId, barcode])
+  @@index([tenantId, category])
+  @@map("products")
+}
+
+enum InventoryTransactionType {
+  IN
+  OUT
+  ADJUSTMENT
+  TRANSFER
+  CONSUMPTION
+  WASTE
+}
+
+model InventoryTransaction {
+  id            String                   @id @default(uuid()) @db.Uuid
+  tenantId      String                   @map("tenant_id") @db.Uuid
+  branchId      String                   @map("branch_id") @db.Uuid
+  productId     String                   @map("product_id") @db.Uuid
+  type          InventoryTransactionType @default(IN)
+  quantity      Decimal                  @db.Decimal(10, 2)
+  referenceType String?                  @map("reference_type") @db.VarChar(50)
+  referenceId   String?                  @map("reference_id") @db.Uuid
+  createdAt     DateTime                 @default(now()) @map("created_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([productId])
+  @@index([createdAt])
+  @@map("inventory_transactions")
+}
+
+model ProductLot {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  branchId        String    @map("branch_id") @db.Uuid
+  productId       String    @map("product_id") @db.Uuid
+  lotNumber       String    @map("lot_number") @db.VarChar(100)
+  mfgDate         DateTime? @map("mfg_date")
+  expDate         DateTime  @map("exp_date")
+  initialQuantity Decimal   @map("initial_quantity") @db.Decimal(10, 2)
+  currentQuantity Decimal   @map("current_quantity") @db.Decimal(10, 2)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([productId])
+  @@index([expDate])
+  @@map("product_lots")
+}
+
+model Supplier {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+  email     String?  @db.VarChar(255)
+  address   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+model Purchase {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  branchId    String   @map("branch_id") @db.Uuid
+  supplierId  String   @map("supplier_id") @db.Uuid
+  status      String   @default("COMPLETED") @db.VarChar(50)
+  totalMinor  BigInt   @default(0) @map("total_minor")
+  purchasedAt DateTime @default(now()) @map("purchased_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch   Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  supplier Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items    PurchaseItem[]
+
+  @@index([tenantId])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id            String  @id @default(uuid()) @db.Uuid
+  purchaseId    String  @map("purchase_id") @db.Uuid
+  productId     String  @map("product_id") @db.Uuid
+  quantity      Decimal @db.Decimal(10, 2)
+  unitCostMinor BigInt  @default(0) @map("unit_cost_minor")
+  totalMinor    BigInt  @default(0) @map("total_minor")
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+  @@map("purchase_items")
+}
+
+// -----------------------------------------------------------------------------
+// 9. Tags, Consents & Notifications
+// -----------------------------------------------------------------------------
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerTags CustomerTag[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("tags")
+}
+
+model CustomerTag {
+  customerId String @map("customer_id") @db.Uuid
+  tagId      String @map("tag_id") @db.Uuid
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([customerId, tagId])
+  @@map("customer_tags")
+}
+
+model Consent {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  customerId  String   @map("customer_id") @db.Uuid
+  consentType String   @map("consent_type") @db.VarChar(100)
+  granted     Boolean  @default(true)
+  recordedAt  DateTime @default(now()) @map("recorded_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("consents")
+}
+
+model Notification {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  customerId    String    @map("customer_id") @db.Uuid
+  appointmentId String?   @map("appointment_id") @db.Uuid
+  channel       String    @default("LINE") @db.VarChar(50)
+  type          String    @db.VarChar(50)
+  status        String    @default("PENDING") @db.VarChar(50)
+  title         String    @default("") @db.VarChar(255)
+  message       String    @db.Text
+  payload       Json?
+  error         String?   @db.Text
+  retryCount    Int       @default(0) @map("retry_count")
+  scheduledAt   DateTime  @default(now()) @map("scheduled_at")
+  sentAt        DateTime? @map("sent_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([scheduledAt, status])
+  @@map("notifications")
+}
+
+model NotificationTemplate {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  code         String   @db.VarChar(100)
+  name         String   @db.VarChar(255)
+  channel      String   @default("LINE") @db.VarChar(50)
+  type         String   @db.VarChar(50)
+  title        String   @db.VarChar(255)
+  content      String   @db.Text
+  lineFlexJson Json?    @map("line_flex_json")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("notification_templates")
+}
+
+model NotificationPreference {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  customerId     String   @unique @map("customer_id") @db.Uuid
+  allowLine      Boolean  @default(true) @map("allow_line")
+  allowSms       Boolean  @default(true) @map("allow_sms")
+  allowEmail     Boolean  @default(true) @map("allow_email")
+  allowMarketing Boolean  @default(true) @map("allow_marketing")
+  allowReminders Boolean  @default(true) @map("allow_reminders")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, customerId])
+  @@index([tenantId])
+  @@map("notification_preferences")
+}
+
+model LineInboundMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  lineUserId  String   @map("line_user_id") @db.VarChar(100)
+  replyToken  String?  @map("reply_token") @db.VarChar(100)
+  eventType   String   @map("event_type") @db.VarChar(50)
+  messageType String?  @map("message_type") @db.VarChar(50)
+  text        String?  @db.Text
+  payload     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([lineUserId])
+  @@index([createdAt])
+  @@map("line_inbound_messages")
+}
+
+model Campaign {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  channel     String   @default("LINE") @db.VarChar(50)
+  status      String   @default("DRAFT") @db.VarChar(50)
+  scheduledAt DateTime @default(now()) @map("scheduled_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipients CampaignRecipient[]
+
+  @@index([tenantId])
+  @@map("campaigns")
+}
+
+model CampaignRecipient {
+  id         String    @id @default(uuid()) @db.Uuid
+  campaignId String    @map("campaign_id") @db.Uuid
+  customerId String    @map("customer_id") @db.Uuid
+  status     String    @default("PENDING") @db.VarChar(50)
+  sentAt     DateTime? @map("sent_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([customerId])
+  @@map("campaign_recipients")
+}
+
+// -----------------------------------------------------------------------------
+// 10. Subscriptions & Billing (Phase 12 SaaS Admin)
+// -----------------------------------------------------------------------------
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+  UNPAID
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+model SubscriptionPlan {
+  id                     String   @id @default(uuid()) @db.Uuid
+  code                   String   @unique @db.VarChar(50)
+  name                   String   @db.VarChar(100)
+  description            String?  @db.Text
+  priceMonthlyMinor      BigInt   @default(0) @map("price_monthly_minor")
+  priceYearlyMinor       BigInt   @default(0) @map("price_yearly_minor")
+  currency               String   @default("THB") @db.VarChar(10)
+  maxBranches            Int      @default(1) @map("max_branches")
+  maxStaffUsers          Int      @default(3) @map("max_staff_users")
+  maxMonthlyAppointments Int      @default(300) @map("max_monthly_appointments")
+  hasLineIntegration     Boolean  @default(false) @map("has_line_integration")
+  hasAdvancedInventory   Boolean  @default(false) @map("has_advanced_inventory")
+  hasClinicalSoap        Boolean  @default(false) @map("has_clinical_soap")
+  hasVaccinationRegistry Boolean  @default(false) @map("has_vaccination_registry")
+  hasCommissionEngine    Boolean  @default(false) @map("has_commission_engine")
+  hasMultiBranchCentral  Boolean  @default(false) @map("has_multi_branch_central")
+  hasApiAccess           Boolean  @default(false) @map("has_api_access")
+  isActive               Boolean  @default(true) @map("is_active")
+  sortOrder              Int      @default(0) @map("sort_order")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                  String             @id @default(uuid()) @db.Uuid
+  tenantId            String             @map("tenant_id") @db.Uuid
+  planId              String?            @map("plan_id") @db.Uuid
+  planCode            String             @default("STARTER") @map("plan_code") @db.VarChar(50)
+  status              SubscriptionStatus @default(ACTIVE)
+  billingCycle        BillingCycle       @default(MONTHLY) @map("billing_cycle")
+  priceMinor          BigInt             @default(0) @map("price_minor")
+  currency            String             @default("THB") @db.VarChar(10)
+  trialEndsAt         DateTime?          @map("trial_ends_at")
+  currentPeriodStart  DateTime           @default(now()) @map("current_period_start")
+  currentPeriodEnd    DateTime           @map("current_period_end")
+  cancelAtPeriodEnd   Boolean            @default(false) @map("cancel_at_period_end")
+  canceledAt          DateTime?          @map("canceled_at")
+  customMaxBranches   Int?               @map("custom_max_branches")
+  customMaxStaffUsers Int?               @map("custom_max_staff_users")
+  customFeatures      Json?              @map("custom_features")
+  paymentMethod       String?            @map("payment_method") @db.VarChar(50)
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  tenant   Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  invoices SubscriptionInvoice[]
+
+  @@index([tenantId])
+  @@index([planId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model SubscriptionInvoice {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  subscriptionId     String    @map("subscription_id") @db.Uuid
+  invoiceNumber      String    @unique @map("invoice_number") @db.VarChar(100)
+  amountMinor        BigInt    @map("amount_minor")
+  currency           String    @default("THB") @db.VarChar(10)
+  status             String    @default("PAID") @db.VarChar(50)
+  billingPeriodStart DateTime  @map("billing_period_start")
+  billingPeriodEnd   DateTime  @map("billing_period_end")
+  paidAt             DateTime? @map("paid_at")
+  paymentReference   String?   @map("payment_reference") @db.VarChar(255)
+  receiptUrl         String?   @map("receipt_url") @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("subscription_invoices")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String   @db.VarChar(100)
+  entity    String   @db.VarChar(100)
+  entityId  String?  @map("entity_id") @db.Uuid
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  ip        String?  @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// -----------------------------------------------------------------------------
+// 11. Feature Flags (PF-065)
+// -----------------------------------------------------------------------------
+
+model FeatureFlag {
+  id              String   @id @default(uuid()) @db.Uuid
+  key             String   @unique @db.VarChar(100)
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  category        String   @default("CORE") @db.VarChar(50)
+  isGlobalEnabled Boolean  @default(true) @map("is_global_enabled")
+  minPlanCode     String?  @map("min_plan_code") @db.VarChar(50)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  overrides TenantFeatureOverride[]
+
+  @@map("feature_flags")
+}
+
+model TenantFeatureOverride {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  featureFlagId String    @map("feature_flag_id") @db.Uuid
+  isEnabled     Boolean   @map("is_enabled")
+  expiresAt     DateTime? @map("expires_at")
+  reason        String?   @db.VarChar(255)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  featureFlag FeatureFlag @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, featureFlagId])
+  @@index([tenantId])
+  @@index([featureFlagId])
+  @@map("tenant_feature_overrides")
+}
+
+// -----------------------------------------------------------------------------
+// 12. Usage Metering & Quota Tracking (PF-067)
+// -----------------------------------------------------------------------------
+
+enum UsageMetricType {
+  LINE_MESSAGES
+  SMS_CREDITS
+  STORAGE_BYTES
+  MONTHLY_APPOINTMENTS
+  API_CALLS
+}
+
+model TenantUsageRecord {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantId      String          @map("tenant_id") @db.Uuid
+  metricType    UsageMetricType @map("metric_type")
+  billingPeriod String          @map("billing_period") @db.VarChar(10) // e.g. "2026-08"
+  quantity      Int             @default(1)
+  referenceId   String?         @map("reference_id") @db.VarChar(100)
+  metadata      Json?
+  recordedAt    DateTime        @default(now()) @map("recorded_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, metricType, billingPeriod])
+  @@index([recordedAt])
+  @@map("tenant_usage_records")
+}
+
+model TenantUsageSummary {
+  id                   String          @id @default(uuid()) @db.Uuid
+  tenantId             String          @map("tenant_id") @db.Uuid
+  metricType           UsageMetricType @map("metric_type")
+  billingPeriod        String          @map("billing_period") @db.VarChar(10) // e.g. "2026-08"
+  usedQuantity         Int             @default(0) @map("used_quantity")
+  quotaLimit           Int             @default(0) @map("quota_limit")
+  extraCredits         Int             @default(0) @map("extra_credits")
+  lastWarningThreshold Int?            @map("last_warning_threshold")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, metricType, billingPeriod])
+  @@index([tenantId, billingPeriod])
+  @@map("tenant_usage_summaries")
+}
