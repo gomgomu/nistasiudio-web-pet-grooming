@@ -543,7 +543,7 @@ export default function GroomingQueueBoardPage() {
   }, [queueItems]);
 
   return (
-    <div className="p-4 md:p-8 space-y-5 max-w-[1600px] mx-auto min-h-screen">
+    <div className="space-y-5">
       {/* Toast Floating Alert Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -743,15 +743,15 @@ export default function GroomingQueueBoardPage() {
         </div>
       </div>
 
-      {/* 5. Kanban Workflow Board (7 Columns) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4 items-start overflow-x-auto pb-6">
+      {/* 5. Kanban Workflow Board (7 Columns - Horizontal Swipe on Mobile/iPad, 7-Col Grid on Desktop) */}
+      <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory xl:grid xl:grid-cols-7 xl:overflow-visible items-start">
         {STAGE_COLUMNS.map((col) => {
           const colItems = filteredItems.filter((i) => i.status === col.stage);
 
           return (
             <div
               key={col.stage}
-              className={`rounded-3xl border ${col.borderColor} bg-slate-50/50 dark:bg-slate-900/40 p-3 flex flex-col min-h-[550px] shadow-sm`}
+              className={`min-w-[280px] sm:min-w-[320px] xl:min-w-0 snap-center rounded-3xl border ${col.borderColor} bg-slate-50/50 dark:bg-slate-900/40 p-3 flex flex-col min-h-[550px] shadow-sm`}
             >
               {/* Column Header */}
               <div

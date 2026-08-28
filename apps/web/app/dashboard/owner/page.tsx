@@ -28,7 +28,6 @@ import {
   Send,
   Zap,
 } from 'lucide-react';
-import { AppShell } from '../../../components/layout/app-shell';
 import { Badge } from '@petflow/ui';
 import {
   OwnerDashboardMetrics,
@@ -148,8 +147,7 @@ export default function OwnerDashboardPage() {
   }, [metrics.dailyRevenueTrend]);
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
       {/* Top Breadcrumbs & Branch Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -603,6 +601,5 @@ export default function OwnerDashboardPage() {
         </div>
       </div>
     </div>
-  </AppShell>
   );
 }

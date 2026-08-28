@@ -14,12 +14,16 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node --transpile-only prisma/seed.ts",
+    "db:backup": "ts-node --transpile-only scripts/db-backup.ts",
+    "db:restore": "ts-node --transpile-only scripts/db-restore.ts",
+    "tenant:export": "ts-node --transpile-only scripts/tenant-export.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.3.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "eslint": "^9.18.0",
     "prisma": "^6.3.0",
     "rimraf": "^6.0.1",

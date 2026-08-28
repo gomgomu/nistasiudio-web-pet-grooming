@@ -1,0 +1,46 @@
+# ==============================================================================
+# PetFlow API — Multi-Stage Production Dockerfile (NestJS)
+# ==============================================================================
+
+# Stage 1: Base & Dependencies
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN npm install -g pnpm@11.23.0
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+
+FROM base AS dependencies
+WORKDIR /app
+COPY prisma ./prisma
+RUN pnpm install --frozen-lockfile
+RUN pnpm prisma:generate
+
+# Stage 2: Builder
+FROM dependencies AS builder
+WORKDIR /app
+COPY packages ./packages
+COPY apps/api ./apps/api
+COPY tsconfig.base.json tsconfig.json ./
+RUN pnpm --filter @petflow/types run build
+RUN pnpm --filter @petflow/api run build
+
+# Stage 3: Production Runner
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN npm install -g pnpm@11.23.0 prisma@6.3.0
+
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/prisma ./prisma
+COPY --from=builder /app/packages/types/dist ./packages/types/dist
+COPY --from=builder /app/packages/types/package.json ./packages/types/package.json
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder /app/package.json ./package.json
+
+USER node
+EXPOSE 4000
+CMD ["node", "apps/api/dist/main.js"]

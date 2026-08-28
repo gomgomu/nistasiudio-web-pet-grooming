@@ -449,7 +449,7 @@ export default function PosCashierPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-[1600px] mx-auto min-h-screen">
+    <div className="space-y-6 w-full">
       {/* 1. Header Bar with Tabs & Context */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>

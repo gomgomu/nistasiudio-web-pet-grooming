@@ -20,6 +20,9 @@ export class LoggingInterceptor implements NestInterceptor {
 
     const { method, originalUrl, ip } = req;
     const userAgent = req.get('user-agent') || 'unknown';
+    const requestId = (req as any).requestId || req.headers['x-request-id'] || 'no-request-id';
+    const tenantId = (req as any).tenant?.id || (req as any).user?.tenantId || null;
+    const userId = (req as any).user?.id || null;
     const startTime = Date.now();
 
     return next.handle().pipe(
@@ -27,16 +30,36 @@ export class LoggingInterceptor implements NestInterceptor {
         next: () => {
           const duration = Date.now() - startTime;
           const statusCode = res.statusCode;
-          this.logger.log(
-            `[${method}] ${originalUrl} ${statusCode} - ${duration}ms (IP: ${ip}, UA: ${userAgent})`
-          );
+          const logPayload = {
+            timestamp: new Date().toISOString(),
+            requestId,
+            tenantId,
+            userId,
+            method,
+            url: originalUrl,
+            statusCode,
+            durationMs: duration,
+            clientIp: ip,
+            userAgent,
+          };
+          this.logger.log(JSON.stringify(logPayload));
         },
-        error: () => {
+        error: (err: any) => {
           const duration = Date.now() - startTime;
-          const statusCode = res.statusCode || 500;
-          this.logger.warn(
-            `[${method}] ${originalUrl} ${statusCode} [FAILED] - ${duration}ms (IP: ${ip})`
-          );
+          const statusCode = err?.status || res.statusCode || 500;
+          const logPayload = {
+            timestamp: new Date().toISOString(),
+            requestId,
+            tenantId,
+            userId,
+            method,
+            url: originalUrl,
+            statusCode,
+            durationMs: duration,
+            clientIp: ip,
+            error: err?.message || 'Request execution error',
+          };
+          this.logger.warn(JSON.stringify(logPayload));
         },
       })
     );

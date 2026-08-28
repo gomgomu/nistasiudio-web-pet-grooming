@@ -178,7 +178,7 @@ export default function SubscriptionSettingsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-24">
+    <div className="w-full space-y-8 pb-24">
       {/* Top Breadcrumb & Title */}
       <div>
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">

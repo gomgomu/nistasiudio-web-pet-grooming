@@ -58,7 +58,7 @@ const SETTINGS_SECTIONS = [
 
 export default function SettingsHubPage() {
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-24">
+    <div className="w-full space-y-6 pb-24">
       <div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
           <Settings className="w-6 h-6 text-slate-700 dark:text-slate-300" /> การตั้งค่าระบบ (Settings)

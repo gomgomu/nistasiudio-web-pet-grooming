@@ -29,10 +29,13 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 import { SaaSAdminModule } from './saas-admin/saas-admin.module';
 import { UsageMeteringModule } from './usage-metering/usage-metering.module';
 import { SecurityModule } from './security/security.module';
+import { BackupModule } from './backup/backup.module';
+import { ObservabilityModule } from './observability/observability.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Module({
   imports: [
@@ -67,6 +70,8 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     SaaSAdminModule,
     UsageMeteringModule,
     SecurityModule,
+    BackupModule,
+    ObservabilityModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -86,6 +91,7 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(TenantContextMiddleware).forRoutes('*');
+    consumer.apply(RequestIdMiddleware, TenantContextMiddleware).forRoutes('*');
   }
 }
+

@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { globalErrorTracker } from '../observability/error-tracker';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -21,6 +22,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let errorCode = 'INTERNAL_SERVER_ERROR';
     let message = 'An unexpected error occurred';
     let details: unknown = undefined;
+
+    const requestId = (request as any)?.requestId || request?.headers?.['x-request-id'] || 'unknown';
+    const tenantId = (request as any)?.tenant?.id || (request as any)?.user?.tenantId || undefined;
+    const userId = (request as any)?.user?.id || undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -46,9 +51,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     if (status >= 500) {
-      this.logger.error(`[${status}] ${request.method} ${request.url} - Error: ${message}`);
+      this.logger.error(`[${status}] ${request.method} ${request.url} - Error: ${message} (Request-ID: ${requestId})`);
+      // Dispatch to Error Tracking hooks for external alerting
+      globalErrorTracker.captureException(exception, {
+        requestId,
+        tenantId,
+        userId,
+        url: request.url,
+        method: request.method,
+        ip: request.ip,
+        statusCode: status,
+      });
     } else {
-      this.logger.warn(`[${status}] ${request.method} ${request.url} - Client Error: ${message}`);
+      this.logger.warn(`[${status}] ${request.method} ${request.url} - Client Error: ${message} (Request-ID: ${requestId})`);
     }
 
     response.status(status).json({
@@ -56,6 +71,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error: {
         code: errorCode,
         message,
+        requestId,
         ...(details ? { details } : {}),
       },
       path: request.url,

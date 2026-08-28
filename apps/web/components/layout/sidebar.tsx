@@ -21,30 +21,33 @@ import {
   Stethoscope,
   Zap,
   Shield,
+  X,
 } from 'lucide-react';
+import { useAuth, UserRole } from '../../contexts/auth-context';
 
 export interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
+  allowedRoles?: UserRole[];
 }
 
 const navItems: NavItem[] = [
   { title: 'ภาพรวมระบบ', href: '/', icon: LayoutDashboard },
-  { title: 'นัดหมาย & ปฏิทิน', href: '/appointments', icon: Calendar, badge: '8' },
-  { title: 'คิวกรูมมิ่ง (Queue)', href: '/grooming/queue', icon: Scissors, badge: '5' },
-  { title: 'ตรวจรักษา (Clinical)', href: '/clinical', icon: Stethoscope, badge: 'OPD' },
-  { title: 'ลูกค้า & สัตว์เลี้ยง', href: '/customers', icon: Users },
-  { title: 'การรักษาลูกค้า (Retention)', href: '/retention', icon: UserCheck, badge: 'RFM' },
-  { title: 'บริการ & พนักงาน', href: '/services', icon: Briefcase },
-  { title: 'จุดขายหน้าร้าน (POS)', href: '/pos', icon: CreditCard },
-  { title: 'คลังสินค้า (Stock)', href: '/inventory', icon: Package },
-  { title: 'แจ้งเตือน & LINE', href: '/notifications', icon: BellRing },
-  { title: 'รายงาน & วิเคราะห์', href: '/reports', icon: BarChart3 },
-  { title: 'แพ็กเกจ & บิล (SaaS)', href: '/settings/subscription', icon: Zap, badge: 'Pro' },
-  { title: 'SaaS Admin Hub', href: '/admin', icon: Shield, badge: 'HQ' },
-  { title: 'ตั้งค่าระบบ', href: '/settings', icon: Settings },
+  { title: 'นัดหมาย & ปฏิทิน', href: '/appointments', icon: Calendar, badge: '8', allowedRoles: ['TENANT_OWNER', 'GROOMER', 'VETERINARIAN', 'RECEPTIONIST'] },
+  { title: 'คิวกรูมมิ่ง (Queue)', href: '/grooming/queue', icon: Scissors, badge: '5', allowedRoles: ['TENANT_OWNER', 'GROOMER', 'RECEPTIONIST'] },
+  { title: 'ตรวจรักษา (Clinical)', href: '/clinical', icon: Stethoscope, badge: 'OPD', allowedRoles: ['TENANT_OWNER', 'VETERINARIAN', 'RECEPTIONIST'] },
+  { title: 'ลูกค้า & สัตว์เลี้ยง', href: '/customers', icon: Users, allowedRoles: ['TENANT_OWNER', 'GROOMER', 'VETERINARIAN', 'RECEPTIONIST'] },
+  { title: 'การรักษาลูกค้า (Retention)', href: '/retention', icon: UserCheck, badge: 'RFM', allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
+  { title: 'บริการ & พนักงาน', href: '/services', icon: Briefcase, allowedRoles: ['TENANT_OWNER', 'RECEPTIONIST'] },
+  { title: 'จุดขายหน้าร้าน (POS)', href: '/pos', icon: CreditCard, allowedRoles: ['TENANT_OWNER', 'RECEPTIONIST'] },
+  { title: 'คลังสินค้า (Stock)', href: '/inventory', icon: Package, allowedRoles: ['TENANT_OWNER', 'VETERINARIAN', 'RECEPTIONIST'] },
+  { title: 'แจ้งเตือน & LINE', href: '/notifications', icon: BellRing, allowedRoles: ['TENANT_OWNER', 'RECEPTIONIST'] },
+  { title: 'รายงาน & วิเคราะห์', href: '/reports', icon: BarChart3, allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
+  { title: 'แพ็กเกจ & บิล (SaaS)', href: '/settings/subscription', icon: Zap, badge: 'Pro', allowedRoles: ['TENANT_OWNER', 'SAAS_ADMIN'] },
+  { title: 'SaaS Admin Hub', href: '/admin', icon: Shield, badge: 'HQ', allowedRoles: ['SAAS_ADMIN'] },
+  { title: 'ตั้งค่าระบบ', href: '/settings', icon: Settings, allowedRoles: ['TENANT_OWNER', 'SAAS_ADMIN'] },
 ];
 
 export function Sidebar({
@@ -57,13 +60,18 @@ export function Sidebar({
   onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const visibleNavItems = navItems.filter(
+    (item) => !item.allowedRoles || item.allowedRoles.includes(user.role)
+  );
 
   return (
     <>
       {/* Mobile Backdrop */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-md lg:hidden transition-opacity"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-md lg:hidden transition-opacity cursor-pointer"
           onClick={onCloseMobile}
         />
       )}
@@ -71,14 +79,14 @@ export function Sidebar({
       {/* Sidebar Container */}
       <aside
         className={cn(
-          'fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200/80 bg-white/80 dark:border-slate-800/80 dark:bg-slate-900/80 backdrop-blur-xl transition-transform duration-300 ease-in-out lg:translate-x-0',
+          'fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200/80 bg-white/95 dark:border-slate-800/80 dark:bg-slate-900/95 backdrop-blur-xl transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-2xl lg:shadow-none',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full',
           className
         )}
       >
         {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200/60 dark:border-slate-800/60">
-          <Link href="/" className="flex items-center gap-3 group">
+        <div className="flex h-16 items-center justify-between px-5 border-b border-slate-200/60 dark:border-slate-800/60">
+          <Link href="/" className="flex items-center gap-3 group" onClick={onCloseMobile}>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0071e3] to-[#0058b8] text-white font-bold shadow-md shadow-blue-500/25 transition-transform group-hover:scale-105">
               🐾
             </div>
@@ -96,14 +104,24 @@ export function Sidebar({
               </span>
             </div>
           </Link>
+
+          {/* Close button on mobile/iPad */}
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer transition-colors"
+            aria-label="Close menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
-            เมนูหลัก (Operations)
+            เมนูหลัก ({user.roleTitle.split(' ')[0]})
           </div>
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
@@ -160,17 +178,17 @@ export function Sidebar({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0071e3]"></span>
                 </span>
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  สาขาทองหล่อ (Main)
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[120px]">
+                  {user.branchName}
                 </span>
               </div>
               <span className="text-[10px] font-semibold text-[#0071e3] dark:text-blue-400 bg-blue-100/70 dark:bg-blue-950/70 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                 <Sparkles className="h-2.5 w-2.5" />
-                SaaS Pro
+                {user.role === 'SAAS_ADMIN' ? 'SaaS HQ' : 'SaaS Pro'}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
-              PetFlow Clinic & Grooming Club
+              {user.name} ({user.roleTitle.split(' ')[0]})
             </p>
           </div>
         </div>

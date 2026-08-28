@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { AppShell } from '../components/layout/app-shell';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@petflow/ui';
+import { useAuth } from '../contexts/auth-context';
 import {
   TrendingUp,
   TrendingDown,
@@ -218,6 +218,7 @@ const statusColors: Record<string, { bg: string; text: string; label: string; do
 };
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'QUEUE' | 'TIMELINE'>('OVERVIEW');
   const [period, setPeriod] = useState<DashboardPeriod>('THIS_MONTH');
   const [selectedBranch, setSelectedBranch] = useState('ALL');
@@ -229,8 +230,7 @@ export default function HomePage() {
   }, [metrics.dailyRevenueTrend]);
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Executive Header Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Dashboard Tab Switcher */}
@@ -243,7 +243,7 @@ export default function HomePage() {
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5 text-[#0071e3]" /> ภาพรวมผู้บริหาร (Owner Executive)
+              <BarChart3 className="w-3.5 h-3.5 text-[#0071e3]" /> ภาพรวมผู้บริหาร ({user.roleTitle.split(' ')[0]})
             </button>
             <button
               onClick={() => setActiveTab('QUEUE')}
@@ -270,35 +270,34 @@ export default function HomePage() {
 
           {/* Branch & Period Selector */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs">
-              <Building2 className="w-3.5 h-3.5 text-[#0071e3]" />
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/90 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/80 shadow-apple text-xs">
+              <Building2 className="w-3.5 h-3.5 text-blue-500" />
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-transparent focus:outline-none cursor-pointer"
+                className="bg-transparent font-medium text-slate-700 dark:text-slate-200 focus:outline-hidden text-xs cursor-pointer"
               >
                 <option value="ALL">🏢 รวมทุกสาขา</option>
-                <option value="b1">📍 สาขาทองหล่อ (Thonglor)</option>
-                <option value="b2">📍 สาขาอารีย์ (Ari)</option>
+                <option value="b-01">สาขาทองหล่อ (Main)</option>
+                <option value="b-02">สาขาอารีย์</option>
+                <option value="b-03">สาขาเอกมัย</option>
               </select>
             </div>
 
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl text-xs font-semibold">
-              {(
-                [
-                  { id: 'TODAY', label: 'วันนี้' },
-                  { id: 'THIS_WEEK', label: 'สัปดาห์นี้' },
-                  { id: 'THIS_MONTH', label: 'เดือนนี้' },
-                  { id: 'LAST_30_DAYS', label: '30 วัน' },
-                  { id: 'THIS_YEAR', label: 'ปีนี้' },
-                ] as const
-              ).map((p) => (
+            <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-2xl">
+              {[
+                { id: 'TODAY', label: 'วันนี้' },
+                { id: 'THIS_WEEK', label: 'สัปดาห์นี้' },
+                { id: 'THIS_MONTH', label: 'เดือนนี้' },
+                { id: 'LAST_30_DAYS', label: '30 วัน' },
+                { id: 'YEAR_TO_DATE', label: 'ปีนี้' },
+              ].map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => setPeriod(p.id)}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                  onClick={() => setPeriod(p.id as DashboardPeriod)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                     period === p.id
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   }`}
                 >
@@ -325,10 +324,10 @@ export default function HomePage() {
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                สวัสดีคุณเจ้าของร้าน! ยอดขายเดือนนี้ ฿{(metrics.revenue.totalRevenueMinor / 100).toLocaleString('th-TH')} (+{metrics.revenue.growthRate}%)
+                สวัสดีคุณ{user.name}! ยอดขายเดือนนี้ ฿{(metrics.revenue.totalRevenueMinor / 100).toLocaleString('th-TH')} (+{metrics.revenue.growthRate}%)
               </h1>
               <p className="text-blue-100 text-xs sm:text-sm max-w-2xl leading-relaxed">
-                คิวกรูมมิ่งในระบบวันนี้ {queue.length} คิว • สัดส่วนรายได้จากลูกค้าประจำสูงถึง {metrics.customerAndLtv.repeatRevenueShare}% พร้อมระบบติดตาม LINE อัตโนมัติ
+                {user.roleTitle} ประจำ{user.branchName} • คิวกรูมมิ่งในระบบวันนี้ {queue.length} คิว • สัดส่วนรายได้ลูกค้าประจำ {metrics.customerAndLtv.repeatRevenueShare}%
               </p>
             </div>
 
@@ -929,6 +928,5 @@ export default function HomePage() {
           </div>
         )}
       </div>
-    </AppShell>
   );
 }

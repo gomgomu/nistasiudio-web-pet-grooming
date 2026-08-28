@@ -804,13 +804,13 @@ Review:
 ---
 
 ### PF-070 — Backup + recovery
-Status: TODO
+Status: DONE
 Depends on: PF-069
 
 ---
 
 ### PF-071 — Observability
-Status: TODO
+Status: DONE
 Depends on: PF-069
 
 Add:
@@ -823,7 +823,7 @@ Add:
 ---
 
 ### PF-072 — Production deployment
-Status: TODO
+Status: DONE
 Depends on: PF-070, PF-071
 
 Create:

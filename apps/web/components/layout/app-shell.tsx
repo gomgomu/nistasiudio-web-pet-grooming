@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { TopBar } from './top-bar';
 import { GlobalSearchModal } from '../search/global-search-modal';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -20,6 +22,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // For authentication pages (e.g. /login), render full screen without layout shell
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
@@ -42,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onOpenSearch={() => setIsSearchOpen(true)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full space-y-6 min-w-0">
           {children}
         </main>
       </div>
