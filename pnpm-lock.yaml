@@ -154,6 +154,9 @@ importers:
       '@petflow/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@prisma/client':
+        specifier: ^6.3.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       '@tanstack/react-query':
         specifier: ^5.62.11
         version: 5.102.0(react@19.2.8)

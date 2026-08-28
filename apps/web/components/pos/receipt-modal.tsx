@@ -19,6 +19,8 @@ export interface ReceiptItemData {
   discount?: number;
   total: number;
   taxRate?: number;
+  petName?: string;
+  staffName?: string;
 }
 
 export interface ReceiptData {
@@ -42,6 +44,12 @@ export interface ReceiptData {
   receivedAmount?: number;
   change?: number;
   reference?: string;
+  splitDetails?: {
+    method1: string;
+    amount1: number;
+    method2: string;
+    amount2: number;
+  };
   branchName?: string;
   branchAddress?: string;
   branchPhone?: string;
@@ -291,6 +299,18 @@ export function ReceiptModal({
                   <span>วิธีชำระเงิน:</span>
                   <strong className="text-slate-900">{data.paymentMethod}</strong>
                 </div>
+                {data.splitDetails && (
+                  <div className="bg-slate-50 p-1.5 rounded border border-slate-200 my-1 space-y-0.5">
+                    <div className="flex justify-between text-slate-700">
+                      <span>• {data.splitDetails.method1}:</span>
+                      <span className="font-bold">{data.splitDetails.amount1.toFixed(2)} ฿</span>
+                    </div>
+                    <div className="flex justify-between text-slate-700">
+                      <span>• {data.splitDetails.method2}:</span>
+                      <span className="font-bold">{data.splitDetails.amount2.toFixed(2)} ฿</span>
+                    </div>
+                  </div>
+                )}
                 {data.reference && (
                   <div className="flex justify-between text-[9px]">
                     <span>รหัสอ้างอิง:</span>

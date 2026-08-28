@@ -17,16 +17,26 @@ import { CampaignProcessor } from './campaign.processor';
     PrismaModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get<string>('redis.host', 'localhost'),
-          port: configService.get<number>('redis.port', 6379),
-          password: configService.get<string>('redis.password') || undefined,
-          lazyConnect: true,
-          enableOfflineQueue: false,
-          maxRetriesPerRequest: null,
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const isTls = configService.get<boolean>('redis.tls', false);
+        return {
+          connection: {
+            host: configService.get<string>('redis.host', 'localhost'),
+            port: configService.get<number>('redis.port', 6379),
+            password: configService.get<string>('redis.password') || undefined,
+            ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+            lazyConnect: true,
+            enableOfflineQueue: false,
+            maxRetriesPerRequest: null,
+            retryStrategy: (times: number) => {
+              if (times > 5) {
+                return null;
+              }
+              return Math.min(times * 500, 2000);
+            },
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     BullModule.registerQueue(

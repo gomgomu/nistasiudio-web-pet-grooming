@@ -362,6 +362,13 @@ export default function SoapWorkspacePage({ params }: { params: Promise<{ id: st
             <CheckCircle2 className="w-4 h-4" />
             ตรวจเสร็จสิ้น (Complete Visit)
           </button>
+          <Link
+            href="/pos"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer"
+          >
+            <DollarSign className="w-4 h-4" />
+            <span>ส่งไปชำระเงินที่แคชเชียร์ (Send to POS)</span>
+          </Link>
         </div>
       </div>
 

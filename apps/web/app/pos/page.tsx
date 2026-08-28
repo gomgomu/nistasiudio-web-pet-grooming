@@ -20,6 +20,8 @@ import {
   Printer,
   Tag,
   ArrowRight,
+  ArrowRightLeft,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@petflow/ui';
 import { PaymentMethodType } from '@petflow/types';
@@ -45,7 +47,16 @@ export interface PosCartItem {
   unitPriceMinor: number;
   discountMinor: number;
   taxRate: number;
+  petName?: string;
   staffName?: string;
+  commissionRate?: number; // percentage, e.g. 15%
+}
+
+export interface PetProfileChoice {
+  id: string;
+  name: string;
+  species: 'DOG' | 'CAT';
+  breed: string;
 }
 
 export interface CustomerProfileOption {
@@ -55,7 +66,22 @@ export interface CustomerProfileOption {
   petName: string;
   petSpecies: 'DOG' | 'CAT';
   petBreed: string;
+  pets: PetProfileChoice[];
 }
+
+export interface PosStaffOption {
+  id: string;
+  name: string;
+  role: string;
+  commissionRate: number;
+}
+
+export const POS_STAFF_OPTIONS: PosStaffOption[] = [
+  { id: 'st-1', name: 'ช่างเอก (Groomer)', role: 'ช่างกรูมมิ่ง', commissionRate: 15 },
+  { id: 'st-2', name: 'ช่างแนน (Groomer)', role: 'ช่างกรูมมิ่ง', commissionRate: 15 },
+  { id: 'st-3', name: 'น.สพ. วรวิทย์ (หมอวิทย์ OPD)', role: 'สัตวแพทย์', commissionRate: 10 },
+  { id: 'st-4', name: 'น้องฝน (Reception & Cashier)', role: 'แคชเชียร์ & ต้อนรับ', commissionRate: 2 },
+];
 
 const CATALOG_ITEMS: PosCatalogItem[] = [
   // 1. Grooming
@@ -186,6 +212,10 @@ const CUSTOMER_OPTIONS: CustomerProfileOption[] = [
     petName: 'น้องโมจิ',
     petSpecies: 'DOG',
     petBreed: 'ปอมเมอเรเนียน',
+    pets: [
+      { id: 'p-01', name: 'น้องโมจิ', species: 'DOG', breed: 'ปอมเมอเรเนียน' },
+      { id: 'p-02', name: 'น้องถ้วยฟู', species: 'DOG', breed: 'บิชอง ฟริเซ่' },
+    ],
   },
   {
     id: 'c-02',
@@ -194,6 +224,9 @@ const CUSTOMER_OPTIONS: CustomerProfileOption[] = [
     petName: 'น้องบะหมี่',
     petSpecies: 'DOG',
     petBreed: 'พุดเดิ้ล ทอย',
+    pets: [
+      { id: 'p-03', name: 'น้องบะหมี่', species: 'DOG', breed: 'พุดเดิ้ล ทอย' },
+    ],
   },
   {
     id: 'c-03',
@@ -202,6 +235,10 @@ const CUSTOMER_OPTIONS: CustomerProfileOption[] = [
     petName: 'น้องส้มตำ',
     petSpecies: 'CAT',
     petBreed: 'สก็อตติช โฟลด์',
+    pets: [
+      { id: 'p-04', name: 'น้องส้มตำ', species: 'CAT', breed: 'สก็อตติช โฟลด์' },
+      { id: 'p-05', name: 'น้องชาเขียว', species: 'CAT', breed: 'บริติช ช็อตแฮร์' },
+    ],
   },
   {
     id: 'c-04',
@@ -210,6 +247,9 @@ const CUSTOMER_OPTIONS: CustomerProfileOption[] = [
     petName: 'น้องไข่ตุ๋น',
     petSpecies: 'DOG',
     petBreed: 'ชิสุ',
+    pets: [
+      { id: 'p-06', name: 'น้องไข่ตุ๋น', species: 'DOG', breed: 'ชิสุ' },
+    ],
   },
 ];
 
@@ -249,6 +289,50 @@ export default function PosCashierPage() {
   const [invoiceDiscountMinor, setInvoiceDiscountMinor] = useState<number>(0);
   const [discountCode, setDiscountCode] = useState<string>('');
 
+  // Pending Clinical OPD Order State (Item 5)
+  const [pendingClinicalBill, setPendingClinicalBill] = useState<{
+    doctorName: string;
+    patientName: string;
+    customerName: string;
+    customerId: string;
+    diagnosis: string;
+    items: PosCartItem[];
+  } | null>({
+    doctorName: 'น.สพ. วรวิทย์ (หมอวิทย์ OPD)',
+    patientName: 'น้องโมจิ (ปอมเมอเรเนียน)',
+    customerName: 'คุณสุภาพร ใจดี',
+    customerId: 'c-01',
+    diagnosis: 'ตรวจโรคผิวหนังอักเสบ + สั่งจ่ายยารักษา',
+    items: [
+      {
+        id: 'clin-01',
+        catalogItemId: 'cat-05',
+        name: '[OPD] ค่าตรวจสุขภาพทั่วไปโดยสัตวแพทย์',
+        itemType: 'SERVICE',
+        quantity: 1,
+        unitPriceMinor: 30000,
+        discountMinor: 0,
+        taxRate: 7.0,
+        petName: 'น้องโมจิ',
+        staffName: 'น.สพ. วรวิทย์ (หมอวิทย์ OPD)',
+        commissionRate: 10,
+      },
+      {
+        id: 'clin-02',
+        catalogItemId: 'cat-06',
+        name: '[OPD] ยาปฏิชีวนะรักษาแผลผิวหนัง (14 เม็ด)',
+        itemType: 'MEDICATION',
+        quantity: 1,
+        unitPriceMinor: 28000,
+        discountMinor: 0,
+        taxRate: 0.0,
+        petName: 'น้องโมจิ',
+        staffName: 'น.สพ. วรวิทย์ (หมอวิทย์ OPD)',
+        commissionRate: 5,
+      },
+    ],
+  });
+
   // Payment Checkout Modal State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
@@ -259,6 +343,12 @@ export default function PosCashierPage() {
   const [completedInvoiceNo, setCompletedInvoiceNo] = useState<string>('INV-202608-0008');
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
   const [activeReceiptData, setActiveReceiptData] = useState<ReceiptData | null>(null);
+
+  // Split Payment State (Item 7)
+  const [isSplitPayment, setIsSplitPayment] = useState<boolean>(false);
+  const [splitMethod1, setSplitMethod1] = useState<PaymentMethodType>('CASH');
+  const [splitAmount1, setSplitAmount1] = useState<string>('500');
+  const [splitMethod2, setSplitMethod2] = useState<PaymentMethodType>('PROMPTPAY');
 
   // Filter Catalog
   const filteredCatalog = useMemo(() => {
@@ -304,6 +394,13 @@ export default function PosCashierPage() {
     // 6. Total Payable
     const totalMinor = netTaxableSubtotal + taxMinor;
 
+    // 7. Staff Commission Calculation (Item 3)
+    const totalCommissionMinor = cart.reduce((acc, item) => {
+      const itemSubtotal = item.unitPriceMinor * item.quantity;
+      const rate = item.commissionRate || (item.staffName?.includes('ช่าง') ? 15 : item.staffName?.includes('หมอ') ? 10 : 0);
+      return acc + Math.round((itemSubtotal * rate) / 100);
+    }, 0);
+
     return {
       rawSubtotalMinor,
       itemDiscountMinor,
@@ -313,6 +410,7 @@ export default function PosCashierPage() {
       netTaxableSubtotal,
       taxMinor,
       totalMinor,
+      totalCommissionMinor,
     };
   }, [cart, invoiceDiscountMinor]);
 
@@ -344,10 +442,68 @@ export default function PosCashierPage() {
           unitPriceMinor: catalogItem.priceMinor,
           discountMinor: 0,
           taxRate: catalogItem.taxRate,
-          staffName: catalogItem.category === 'GROOMING' ? 'ช่างเอก' : 'หมอณัฐ',
+          petName: selectedCustomer ? selectedCustomer.petName : undefined,
+          staffName: catalogItem.category === 'GROOMING' ? 'ช่างเอก (Groomer)' : 'หมอวิทย์ (OPD)',
+          commissionRate: catalogItem.category === 'GROOMING' ? 15 : 10,
         },
       ];
     });
+  };
+
+  // Update Item Pet assignment (Item 4)
+  const handleUpdateItemPet = (cartItemId: string, petName: string) => {
+    setCart((prev) =>
+      prev.map((i) => (i.id === cartItemId ? { ...i, petName } : i))
+    );
+  };
+
+  // Update Item Staff assignment & Commission (Item 3)
+  const handleUpdateItemStaff = (cartItemId: string, staffName: string, commissionRate: number) => {
+    setCart((prev) =>
+      prev.map((i) => (i.id === cartItemId ? { ...i, staffName, commissionRate } : i))
+    );
+  };
+
+  // Import Pending Clinical Bill (Item 5)
+  const handleImportClinicalBill = () => {
+    if (!pendingClinicalBill) return;
+    const targetCust = CUSTOMER_OPTIONS.find((c) => c.id === pendingClinicalBill.customerId);
+    if (targetCust) {
+      setSelectedCustomer(targetCust);
+    }
+    setCart((prev) => [...prev, ...pendingClinicalBill.items]);
+    setPendingClinicalBill(null);
+  };
+
+  // Deduct Inventory Stock in Real-time (Item 1)
+  const handleDeductInventoryStock = (soldItems: PosCartItem[], invNo: string) => {
+    try {
+      if (typeof window === 'undefined') return;
+      const raw = localStorage.getItem('petflow_inventory_items');
+      let items = raw ? JSON.parse(raw) : null;
+      if (items && Array.isArray(items)) {
+        soldItems.forEach((sold) => {
+          if (sold.itemType === 'PRODUCT' || sold.itemType === 'MEDICATION') {
+            const idx = items.findIndex(
+              (inv: any) =>
+                inv.name.toLowerCase().includes(sold.name.toLowerCase().slice(0, 8)) ||
+                inv.id === sold.catalogItemId
+            );
+            if (idx !== -1) {
+              items[idx].currentStock = Math.max(0, items[idx].currentStock - sold.quantity);
+              if (items[idx].currentStock === 0) {
+                items[idx].stockStatus = 'OUT_OF_STOCK';
+              } else if (items[idx].currentStock <= items[idx].reorderPoint) {
+                items[idx].stockStatus = 'LOW_STOCK';
+              }
+            }
+          }
+        });
+        localStorage.setItem('petflow_inventory_items', JSON.stringify(items));
+      }
+    } catch (e) {
+      console.error('Failed to deduct inventory stock', e);
+    }
   };
 
   // Update Cart Quantity
@@ -384,7 +540,8 @@ export default function PosCashierPage() {
 
   // Quick Queue Import
   const handleImportQueueItem = (qCode: string, name: string, price: number) => {
-    setCart([
+    setCart((prev) => [
+      ...prev,
       {
         id: `cart-${Date.now()}`,
         catalogItemId: 'cat-01',
@@ -394,7 +551,9 @@ export default function PosCashierPage() {
         unitPriceMinor: price * 100,
         discountMinor: 0,
         taxRate: 7.0,
-        staffName: 'ช่างแนน',
+        petName: name,
+        staffName: 'ช่างแนน (Groomer)',
+        commissionRate: 15,
       },
     ]);
   };
@@ -403,10 +562,20 @@ export default function PosCashierPage() {
   const handleCompletePayment = () => {
     const nextInvoiceNo = `INV-202608-00${Math.floor(Math.random() * 90 + 10)}`;
     setCompletedInvoiceNo(nextInvoiceNo);
+    handleDeductInventoryStock(cart, nextInvoiceNo);
     setIsPaymentSuccess(true);
   };
 
   const handlePrintCurrentReceipt = () => {
+    const splitDetails = isSplitPayment
+      ? {
+          method1: splitMethod1 === 'CASH' ? 'เงินสด' : splitMethod1,
+          amount1: parseFloat(splitAmount1) || 0,
+          method2: splitMethod2 === 'PROMPTPAY' ? 'PromptPay' : splitMethod2,
+          amount2: Math.max(0, financialTotals.totalMinor / 100 - (parseFloat(splitAmount1) || 0)),
+        }
+      : undefined;
+
     setActiveReceiptData({
       ...defaultMockReceiptData,
       invoiceNo: completedInvoiceNo,
@@ -415,25 +584,29 @@ export default function PosCashierPage() {
       petName: selectedCustomer ? selectedCustomer.petName : '-',
       petBreed: selectedCustomer ? selectedCustomer.petBreed : '-',
       items: cart.map((i) => ({
-        description: i.name,
+        description: i.petName ? `[${i.petName}] ${i.name}` : i.name,
         quantity: i.quantity,
         unitPrice: i.unitPriceMinor / 100,
         discount: i.discountMinor / 100,
         total: (i.unitPriceMinor * i.quantity - i.discountMinor) / 100,
         taxRate: i.taxRate,
+        petName: i.petName,
+        staffName: i.staffName,
       })),
       subtotal: financialTotals.subtotalMinor / 100,
-      discount: financialTotals.invoiceDiscountMinor / 100,
+      discount: financialTotals.totalDiscountMinor / 100,
       netTaxable: financialTotals.netTaxableSubtotal / 100,
       tax: financialTotals.taxMinor / 100,
       total: financialTotals.totalMinor / 100,
-      paymentMethod: selectedPaymentMethod,
-      receivedAmount:
-        selectedPaymentMethod === 'CASH'
-          ? parseFloat(cashTendered)
+      paymentMethod: isSplitPayment ? 'SPLIT (แบ่งชำระ)' : selectedPaymentMethod,
+      splitDetails,
+      receivedAmount: isSplitPayment
+        ? financialTotals.totalMinor / 100
+        : selectedPaymentMethod === 'CASH'
+          ? parseFloat(cashTendered) || financialTotals.totalMinor / 100
           : financialTotals.totalMinor / 100,
-      change: selectedPaymentMethod === 'CASH' ? cashChangeMinor / 100 : 0,
-      reference: selectedPaymentMethod === 'PROMPTPAY' ? paymentReference : undefined,
+      change: isSplitPayment ? 0 : cashChangeMinor / 100,
+      reference: isSplitPayment ? `SPLIT-${Date.now().toString().slice(-6)}` : paymentReference,
     });
     setIsReceiptModalOpen(true);
   };
@@ -505,19 +678,38 @@ export default function PosCashierPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* LEFT PANE: Product & Service Catalog (7 Cols) */}
           <div className="lg:col-span-7 space-y-4">
-            {/* Quick Queue Import Alert Bar */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200/80 dark:border-blue-900 flex items-center justify-between gap-3 text-xs shadow-apple">
-              <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-medium">
-                <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-                <span>มีคิวกรูมมิ่งพร้อมชำระเงิน: <strong>#Q06 (น้องไข่ตุ๋น)</strong></span>
+            {/* Quick Import Banners: Clinical OPD Orders & Grooming Queue */}
+            <div className="space-y-2.5">
+              {pendingClinicalBill && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/50 dark:to-emerald-950/40 border border-teal-200/90 dark:border-teal-800 flex items-center justify-between gap-3 text-xs shadow-apple">
+                  <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-medium">
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-ping" />
+                    <span>🏥 ใบสั่งยา/ส่งตรวจจาก <strong>{pendingClinicalBill.doctorName}</strong>: {pendingClinicalBill.patientName} ({pendingClinicalBill.diagnosis})</span>
+                  </div>
+                  <button
+                    onClick={handleImportClinicalBill}
+                    className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold transition cursor-pointer flex items-center gap-1 shrink-0 shadow-xs"
+                  >
+                    <span>ดึงเข้าบิลชำระเงิน</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Quick Queue Import Alert Bar */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200/80 dark:border-blue-900 flex items-center justify-between gap-3 text-xs shadow-apple">
+                <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                  <span>✂️ มีคิวกรูมมิ่งพร้อมชำระเงิน: <strong>#Q06 (น้องไข่ตุ๋น)</strong></span>
+                </div>
+                <button
+                  onClick={() => handleImportQueueItem('Q06', 'น้องไข่ตุ๋น', 450)}
+                  className="px-3 py-1 rounded-xl bg-[#0071e3] text-white hover:bg-blue-700 font-bold transition cursor-pointer flex items-center gap-1"
+                >
+                  <span>ดึงบิลเข้า POS</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <button
-                onClick={() => handleImportQueueItem('Q06', 'น้องไข่ตุ๋น', 450)}
-                className="px-3 py-1 rounded-xl bg-[#0071e3] text-white hover:bg-blue-700 font-bold transition cursor-pointer flex items-center gap-1"
-              >
-                <span>ดึงบิลเข้า POS</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
             </div>
 
             {/* Catalog Controls: Search & Category Chips */}
@@ -706,52 +898,89 @@ export default function PosCashierPage() {
                   cart.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
+                      className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2 text-xs"
                     >
-                      <div className="flex-1 min-w-0">
-                        <h5 className="font-bold text-slate-900 dark:text-white truncate">
-                          {item.name}
-                        </h5>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                          <span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h5 className="font-bold text-slate-900 dark:text-white truncate">
+                            {item.name}
+                          </h5>
+                          <span className="text-[11px] text-slate-400">
                             {(item.unitPriceMinor / 100).toLocaleString('th-TH')} ฿ / หน่วย
                           </span>
-                          {item.staffName && (
-                            <span className="px-1.5 py-0.2 rounded bg-blue-100 text-[#0071e3] text-[9px] font-bold">
-                              {item.staffName}
-                            </span>
-                          )}
+                        </div>
+
+                        {/* Quantity Controls */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => handleUpdateQuantity(item.id, -1)}
+                            className="w-5 h-5 rounded-md bg-white dark:bg-slate-700 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                          >
+                            <Minus className="w-2.5 h-2.5" />
+                          </button>
+                          <span className="font-bold w-4 text-center text-xs">{item.quantity}</span>
+                          <button
+                            onClick={() => handleUpdateQuantity(item.id, 1)}
+                            className="w-5 h-5 rounded-md bg-white dark:bg-slate-700 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+
+                        {/* Total Item Price */}
+                        <div className="text-right min-w-[65px] shrink-0">
+                          <span className="font-black text-slate-900 dark:text-white block text-xs">
+                            {((item.unitPriceMinor * item.quantity) / 100).toLocaleString('th-TH')} ฿
+                          </span>
+                          <button
+                            onClick={() => handleRemoveFromCart(item.id)}
+                            className="text-[10px] text-rose-500 hover:underline"
+                          >
+                            ลบ
+                          </button>
                         </div>
                       </div>
 
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleUpdateQuantity(item.id, -1)}
-                          className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="font-bold w-4 text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => handleUpdateQuantity(item.id, 1)}
-                          className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
+                      {/* Multi-Pet & Staff Commission Controls (Item 3 & Item 4) */}
+                      <div className="pt-2 border-t border-slate-200/50 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+                        {/* Pet Selection */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-400">🐾 สัตว์เลี้ยง:</span>
+                          <select
+                            value={item.petName || (selectedCustomer ? selectedCustomer.petName : 'ทั่วไป')}
+                            onChange={(e) => handleUpdateItemPet(item.id, e.target.value)}
+                            className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5 text-slate-800 dark:text-slate-200 font-semibold"
+                          >
+                            {selectedCustomer && selectedCustomer.pets.length > 0 ? (
+                              selectedCustomer.pets.map((p) => (
+                                <option key={p.id} value={p.name}>
+                                  {p.name} ({p.breed})
+                                </option>
+                              ))
+                            ) : (
+                              <option value="ทั่วไป / ไม่ระบุ">ทั่วไป / ไม่ระบุ</option>
+                            )}
+                          </select>
+                        </div>
 
-                      {/* Total Item Price */}
-                      <div className="text-right min-w-[70px]">
-                        <span className="font-black text-slate-900 dark:text-white block">
-                          {((item.unitPriceMinor * item.quantity) / 100).toLocaleString('th-TH')} ฿
-                        </span>
-                        <button
-                          onClick={() => handleRemoveFromCart(item.id)}
-                          className="text-[10px] text-rose-500 hover:underline"
-                        >
-                          ลบ
-                        </button>
+                        {/* Staff Commission Selection */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-400">👤 ช่าง/หมอ:</span>
+                          <select
+                            value={item.staffName || ''}
+                            onChange={(e) => {
+                              const foundSt = POS_STAFF_OPTIONS.find((s) => s.name === e.target.value);
+                              handleUpdateItemStaff(item.id, e.target.value, foundSt ? foundSt.commissionRate : 10);
+                            }}
+                            className="bg-blue-50/80 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5 text-[#0071e3] dark:text-blue-300 font-semibold"
+                          >
+                            {POS_STAFF_OPTIONS.map((st) => (
+                              <option key={st.id} value={st.name}>
+                                {st.name} ({st.commissionRate}%)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -796,6 +1025,13 @@ export default function PosCashierPage() {
                   <span>ภาษีมูลค่าเพิ่ม (VAT 7.00%)</span>
                   <span>{(financialTotals.taxMinor / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
                 </div>
+
+                {financialTotals.totalCommissionMinor > 0 && (
+                  <div className="flex justify-between text-blue-600 dark:text-blue-400 font-semibold text-[11px] bg-blue-50/70 dark:bg-blue-950/40 p-1.5 rounded-lg">
+                    <span>💰 ค่ามือ/คอมมิชชั่นพนักงานรวม</span>
+                    <span>+{(financialTotals.totalCommissionMinor / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 dark:border-slate-700">
                   <span className="font-bold text-sm text-slate-900 dark:text-white">
@@ -1022,31 +1258,80 @@ export default function PosCashierPage() {
                   </div>
 
                   {/* Payment Method Selector Tabs */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     {[
                       { id: 'PROMPTPAY', label: 'PromptPay', icon: <QrCode className="w-4 h-4" /> },
                       { id: 'CASH', label: 'เงินสด', icon: <Banknote className="w-4 h-4" /> },
                       { id: 'CREDIT_CARD', label: 'บัตรเครดิต', icon: <CreditCard className="w-4 h-4" /> },
                       { id: 'BANK_TRANSFER', label: 'โอนเงิน', icon: <Building2 className="w-4 h-4" /> },
+                      { id: 'SPLIT', label: 'แบ่งชำระ (Split)', icon: <ArrowRightLeft className="w-4 h-4" /> },
                     ].map((m) => (
                       <button
                         key={m.id}
                         type="button"
-                        onClick={() => setSelectedPaymentMethod(m.id as PaymentMethodType)}
-                        className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition cursor-pointer font-bold ${
-                          selectedPaymentMethod === m.id
+                        onClick={() => {
+                          if (m.id === 'SPLIT') {
+                            setIsSplitPayment(true);
+                          } else {
+                            setIsSplitPayment(false);
+                            setSelectedPaymentMethod(m.id as PaymentMethodType);
+                          }
+                        }}
+                        className={`p-2.5 rounded-2xl border flex flex-col items-center gap-1.5 transition cursor-pointer font-bold ${
+                          (isSplitPayment && m.id === 'SPLIT') || (!isSplitPayment && selectedPaymentMethod === m.id)
                             ? 'border-[#0071e3] bg-blue-50 dark:bg-blue-950 text-[#0071e3] shadow-xs'
                             : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-600 dark:text-slate-400'
                         }`}
                       >
                         {m.icon}
-                        <span className="text-[11px]">{m.label}</span>
+                        <span className="text-[10px] truncate">{m.label}</span>
                       </button>
                     ))}
                   </div>
 
                   {/* Method-Specific Inputs */}
-                  {selectedPaymentMethod === 'PROMPTPAY' && (
+                  {isSplitPayment ? (
+                    <div className="space-y-4 p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900">
+                      <div className="flex items-center justify-between border-b border-indigo-100 dark:border-indigo-900 pb-2">
+                        <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                          <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+                          ชำระเงินแบบแบ่งจ่าย 2 ช่องทาง (Split Payment)
+                        </span>
+                        <span className="text-[11px] text-indigo-700 dark:text-indigo-400 font-bold">
+                          ยอดรวม: {(financialTotals.totalMinor / 100).toFixed(2)} ฿
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Split 1 */}
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">ช่องทางที่ 1 (เงินสด)</label>
+                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded">ชำระแล้ว</span>
+                          </div>
+                          <input
+                            type="number"
+                            value={splitAmount1}
+                            onChange={(e) => setSplitAmount1(e.target.value)}
+                            className="w-full text-base font-black text-slate-900 dark:text-white p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900"
+                            placeholder="ระบุยอดเงินสด"
+                          />
+                        </div>
+
+                        {/* Split 2 */}
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-indigo-200 dark:border-indigo-800 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-indigo-900 dark:text-indigo-300">ช่องทางที่ 2 (PromptPay QR)</label>
+                            <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1 rounded">สแกนจ่าย</span>
+                          </div>
+                          <div className="w-full text-base font-black text-indigo-600 dark:text-indigo-400 p-2 rounded-lg border border-indigo-200 dark:border-indigo-900 bg-indigo-50/60 dark:bg-indigo-950/40 flex items-center justify-between">
+                            <span>{Math.max(0, financialTotals.totalMinor / 100 - (parseFloat(splitAmount1) || 0)).toFixed(2)} ฿</span>
+                            <QrCode className="w-4 h-4 text-indigo-500" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : selectedPaymentMethod === 'PROMPTPAY' ? (
                     <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col items-center text-center space-y-3">
                       <div className="w-36 h-36 bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center">
                         <QrCode className="w-28 h-28 text-slate-900" />
@@ -1060,9 +1345,7 @@ export default function PosCashierPage() {
                         </span>
                       </div>
                     </div>
-                  )}
-
-                  {selectedPaymentMethod === 'CASH' && (
+                  ) : selectedPaymentMethod === 'CASH' ? (
                     <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                       <div>
                         <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
@@ -1104,9 +1387,7 @@ export default function PosCashierPage() {
                         </span>
                       </div>
                     </div>
-                  )}
-
-                  {selectedPaymentMethod === 'CREDIT_CARD' && (
+                  ) : selectedPaymentMethod === 'CREDIT_CARD' ? (
                     <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                       <div>
                         <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
@@ -1122,9 +1403,7 @@ export default function PosCashierPage() {
                         รองรับ Visa, Mastercard, JCB, และ UnionPay
                       </p>
                     </div>
-                  )}
-
-                  {selectedPaymentMethod === 'BANK_TRANSFER' && (
+                  ) : (
                     <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                       <div>
                         <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">

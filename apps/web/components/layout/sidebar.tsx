@@ -21,6 +21,7 @@ import {
   Stethoscope,
   Zap,
   Shield,
+  Sliders,
   X,
 } from 'lucide-react';
 import { useAuth, UserRole } from '../../contexts/auth-context';
@@ -34,20 +35,19 @@ export interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: 'ภาพรวมระบบ', href: '/', icon: LayoutDashboard },
-  { title: 'นัดหมาย & ปฏิทิน', href: '/appointments', icon: Calendar, badge: '8', allowedRoles: ['TENANT_OWNER', 'GROOMER', 'VETERINARIAN', 'RECEPTIONIST'] },
-  { title: 'คิวกรูมมิ่ง (Queue)', href: '/grooming/queue', icon: Scissors, badge: '5', allowedRoles: ['TENANT_OWNER', 'GROOMER', 'RECEPTIONIST'] },
-  { title: 'ตรวจรักษา (Clinical)', href: '/clinical', icon: Stethoscope, badge: 'OPD', allowedRoles: ['TENANT_OWNER', 'VETERINARIAN', 'RECEPTIONIST'] },
-  { title: 'ลูกค้า & สัตว์เลี้ยง', href: '/customers', icon: Users, allowedRoles: ['TENANT_OWNER', 'GROOMER', 'VETERINARIAN', 'RECEPTIONIST'] },
+  { title: 'ภาพรวมระบบ', href: '/', icon: LayoutDashboard, allowedRoles: ['TENANT_OWNER'] },
+  { title: 'นัดหมาย & ปฏิทิน', href: '/appointments', icon: Calendar, badge: '8', allowedRoles: ['TENANT_OWNER', 'GROOMER', 'VETERINARIAN'] },
+  { title: 'คิวกรูมมิ่ง (Queue)', href: '/grooming/queue', icon: Scissors, badge: '5', allowedRoles: ['TENANT_OWNER', 'GROOMER'] },
+  { title: 'ตรวจรักษา (Clinical)', href: '/clinical', icon: Stethoscope, badge: 'OPD', allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
+  { title: 'ลูกค้า & สัตว์เลี้ยง', href: '/customers', icon: Users, allowedRoles: ['TENANT_OWNER', 'GROOMER', 'VETERINARIAN'] },
   { title: 'การรักษาลูกค้า (Retention)', href: '/retention', icon: UserCheck, badge: 'RFM', allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
-  { title: 'บริการ & พนักงาน', href: '/services', icon: Briefcase, allowedRoles: ['TENANT_OWNER', 'RECEPTIONIST'] },
-  { title: 'จุดขายหน้าร้าน (POS)', href: '/pos', icon: CreditCard, allowedRoles: ['TENANT_OWNER', 'RECEPTIONIST'] },
-  { title: 'คลังสินค้า (Stock)', href: '/inventory', icon: Package, allowedRoles: ['TENANT_OWNER', 'VETERINARIAN', 'RECEPTIONIST'] },
-  { title: 'แจ้งเตือน & LINE', href: '/notifications', icon: BellRing, allowedRoles: ['TENANT_OWNER', 'RECEPTIONIST'] },
-  { title: 'รายงาน & วิเคราะห์', href: '/reports', icon: BarChart3, allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
-  { title: 'แพ็กเกจ & บิล (SaaS)', href: '/settings/subscription', icon: Zap, badge: 'Pro', allowedRoles: ['TENANT_OWNER', 'SAAS_ADMIN'] },
+  { title: 'จุดขายหน้าร้าน (POS)', href: '/pos', icon: CreditCard, allowedRoles: ['TENANT_OWNER'] },
+  { title: 'คลังสินค้า (Stock)', href: '/inventory', icon: Package, allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
+  { title: 'รายงาน & วิเคราะห์', href: '/reports', icon: BarChart3, allowedRoles: ['TENANT_OWNER'] },
+  { title: 'แพ็กเกจ & บิล (SaaS)', href: '/settings/subscription', icon: Zap, badge: 'Pro', allowedRoles: ['TENANT_OWNER'] },
   { title: 'SaaS Admin Hub', href: '/admin', icon: Shield, badge: 'HQ', allowedRoles: ['SAAS_ADMIN'] },
-  { title: 'ตั้งค่าระบบ', href: '/settings', icon: Settings, allowedRoles: ['TENANT_OWNER', 'SAAS_ADMIN'] },
+  { title: 'Feature Flags Hub', href: '/admin/feature-flags', icon: Sliders, badge: 'Control', allowedRoles: ['SAAS_ADMIN'] },
+  { title: 'ตั้งค่าระบบ', href: '/settings', icon: Settings, allowedRoles: ['TENANT_OWNER'] },
 ];
 
 export function Sidebar({
@@ -169,28 +169,61 @@ export function Sidebar({
           })}
         </div>
 
-        {/* Tenant/Branch Badge Footer */}
-        <div className="p-4 border-t border-slate-200/60 dark:border-slate-800/60">
-          <div className="rounded-2xl bg-slate-50/80 p-3.5 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 transition-all hover:bg-slate-100/70">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0071e3]"></span>
-                </span>
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[120px]">
-                  {user.branchName}
+        {/* Tenant/Branch Badge & Subscription Footer */}
+        <div className="p-3.5 border-t border-slate-200/60 dark:border-slate-800/60">
+          {user.role === 'SAAS_ADMIN' ? (
+            <Link
+              href="/admin"
+              className="block rounded-2xl bg-gradient-to-br from-violet-950/40 to-purple-900/30 p-3 dark:bg-slate-800/70 border border-violet-500/30 hover:border-violet-500/50 transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-violet-500 animate-pulse"></span>
+                  <span className="text-xs font-bold text-violet-900 dark:text-violet-200">
+                    SaaS Platform HQ
+                  </span>
+                </div>
+                <span className="text-[10px] font-extrabold text-violet-700 dark:text-violet-300 bg-violet-500/15 px-1.5 py-0.5 rounded-md">
+                  Super Admin
                 </span>
               </div>
-              <span className="text-[10px] font-semibold text-[#0071e3] dark:text-blue-400 bg-blue-100/70 dark:bg-blue-950/70 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                <Sparkles className="h-2.5 w-2.5" />
-                {user.role === 'SAAS_ADMIN' ? 'SaaS HQ' : 'SaaS Pro'}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
-              {user.name} ({user.roleTitle.split(' ')[0]})
-            </p>
-          </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                {user.name}
+              </p>
+            </Link>
+          ) : (
+            <Link
+              href="/settings/subscription"
+              title="คลิกเพื่อดูรายละเอียดแพ็กเกจและการต่ออายุ"
+              className="block rounded-2xl bg-slate-50/90 p-3 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 transition-all hover:bg-blue-50/60 hover:border-blue-300 hover:shadow-xs group cursor-pointer"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[110px]">
+                    {user.branchName}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 group-hover:bg-[#0071e3] group-hover:text-white transition">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  Pro Plan
+                </span>
+              </div>
+
+              {/* Package Expiry Countdown - Compact */}
+              <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between text-[11px]">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">
+                  ⏳ สถานะแพ็กเกจ:
+                </span>
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md text-[10px] border border-emerald-500/20">
+                  เหลืออีก 31 วัน
+                </span>
+              </div>
+            </Link>
+          )}
         </div>
       </aside>
     </>

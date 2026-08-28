@@ -15,6 +15,8 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/auth-context';
+import { useBooking } from '../../contexts/booking-context';
+import { NotificationPopover } from './notification-popover';
 
 export function TopBar({
   onOpenMobile,
@@ -24,6 +26,7 @@ export function TopBar({
   onOpenSearch?: () => void;
 }) {
   const { user } = useAuth();
+  const { openBookingModal } = useBooking();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/80 bg-white/80 px-3 sm:px-6 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/80 transition-colors gap-2">
@@ -74,22 +77,21 @@ export function TopBar({
 
       {/* Right Section: Quick Actions + Notifications + Profile */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-        {/* Quick Add Button */}
-        <Button size="sm" className="gap-1 sm:gap-1.5 shadow-sm shadow-blue-500/25 px-2.5 sm:px-3 text-xs">
-          <Plus className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline">เพิ่มนัดหมาย / คิว</span>
-          <span className="md:hidden">เพิ่ม</span>
-        </Button>
+        {/* Quick Add Button for Store Staff */}
+        {user.role !== 'SAAS_ADMIN' && (
+          <Button
+            size="sm"
+            onClick={() => openBookingModal()}
+            className="gap-1 sm:gap-1.5 shadow-sm shadow-blue-500/25 px-2.5 sm:px-3 text-xs bg-[#0071e3] hover:bg-[#0077ed] text-white active:scale-95 transition"
+          >
+            <Plus className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline">เพิ่มนัดหมาย / คิว</span>
+            <span className="md:hidden">เพิ่ม</span>
+          </Button>
+        )}
 
-        {/* Notifications Icon */}
-        <button
-          type="button"
-          className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white/90 text-slate-600 hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-800 shadow-apple transition-all shrink-0 cursor-pointer"
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#0071e3] ring-2 ring-white dark:ring-slate-900" />
-        </button>
+        {/* Notifications Popover Dropdown */}
+        <NotificationPopover />
 
         {/* User Profile Pill & Role Switcher */}
         <Link

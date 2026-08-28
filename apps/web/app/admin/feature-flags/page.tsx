@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@petflow/ui';
 import { FeatureFlagItem } from '@petflow/types';
+import { useAuth } from '../../../contexts/auth-context';
 
 // Mock Initial Feature Flags
 const MOCK_ADMIN_FLAGS: FeatureFlagItem[] = [
@@ -139,6 +140,7 @@ const MOCK_ADMIN_FLAGS: FeatureFlagItem[] = [
 ];
 
 export default function AdminFeatureFlagsPage() {
+  const { user } = useAuth();
   const [flags, setFlags] = useState<FeatureFlagItem[]>(MOCK_ADMIN_FLAGS);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -208,8 +210,32 @@ export default function AdminFeatureFlagsPage() {
     setIsCreateModalOpen(false);
     setNewKey('');
     setNewName('');
-    setNewDesc('');
+    setNewName('');
   };
+
+  if (user?.role !== 'SAAS_ADMIN') {
+    return (
+      <div className="max-w-lg mx-auto py-16 text-center space-y-4">
+        <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto text-2xl font-bold border border-amber-500/20">
+          <Shield className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          สงวนสิทธิ์เฉพาะ Super Admin (DEV HQ)
+        </h2>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          คุณกำลังล็อกอินอยู่ในบทบาท <strong>{user?.roleTitle}</strong> หน้านี้เป็นศูนย์ควบคุมระบบสำหรับทีมผู้พัฒนาเท่านั้น
+        </p>
+        <div className="pt-2">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#0071e3] text-white text-xs font-bold shadow-md shadow-blue-500/25 hover:bg-[#0077ed] transition cursor-pointer"
+          >
+            กลับสู่แดชบอร์ดร้านของคุณ
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-6 pb-24">

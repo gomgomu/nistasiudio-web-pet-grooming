@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { TopBar } from './top-bar';
 import { GlobalSearchModal } from '../search/global-search-modal';
+import { NewAppointmentModal } from '../appointments/new-appointment-modal';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -35,6 +36,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
       />
+
+      {/* Global New Booking / Appointment Modal */}
+      <NewAppointmentModal />
 
       {/* Sidebar Navigation */}
       <Sidebar

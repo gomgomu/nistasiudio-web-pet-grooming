@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "dev": "pnpm --parallel --filter @petflow/api --filter @petflow/web dev",
     "dev:web": "pnpm --filter @petflow/web dev",
     "dev:api": "pnpm --filter @petflow/api dev",
     "build": "pnpm -r run build",

@@ -392,6 +392,7 @@ export default function GroomingQueueBoardPage() {
   const [selectedItem, setSelectedItem] = useState<GroomingCardItem | null>(null);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeLinePreviewItem, setActiveLinePreviewItem] = useState<GroomingCardItem | null>(null);
 
   // New Check-in Form state
   const [newPetName, setNewPetName] = useState<string>('');
@@ -480,13 +481,17 @@ export default function GroomingQueueBoardPage() {
     }
 
     if (targetStage === 'READY') {
-      showToast('🎉 น้องทำกรูมมิ่งเสร็จแล้ว! ส่งการแจ้งเตือน LINE หาเจ้าของเรียบร้อย');
+      const found = queueItems.find((i) => i.id === id);
+      if (found) {
+        setActiveLinePreviewItem({ ...found, status: 'READY' });
+      }
+      showToast('🎉 กรูมมิ่งเสร็จแล้ว! ระบบเปิดพรีวิวข้อความแจ้งเตือน LINE พร้อมส่งหาลูกค้า');
     }
   };
 
   // Send LINE Pickup Reminder
   const handleSendLineReminder = (item: GroomingCardItem) => {
-    showToast(`📲 ส่งข้อความแจ้งเตือนผ่าน LINE ถึง ${item.customerName} เรียบร้อยแล้ว`);
+    setActiveLinePreviewItem(item);
   };
 
   // Submit New Check-In
@@ -1297,6 +1302,87 @@ export default function GroomingQueueBoardPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* LINE OA Flex Message Preview Modal (Item 2) */}
+      {activeLinePreviewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-[#2c2d30] text-white rounded-3xl overflow-hidden shadow-2xl border border-slate-700 space-y-0">
+            {/* LINE Top Bar */}
+            <div className="bg-[#00B900] text-white px-5 py-3.5 flex items-center justify-between font-bold text-sm">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                <span>PetFlow Official LINE OA</span>
+              </div>
+              <button
+                onClick={() => setActiveLinePreviewItem(null)}
+                className="w-7 h-7 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Chat Body (LINE Bubble) */}
+            <div className="p-5 bg-[#74889e] dark:bg-slate-950 space-y-4">
+              {/* Flex Message Card */}
+              <div className="bg-white text-slate-900 rounded-2xl overflow-hidden shadow-lg border border-slate-200">
+                {/* Header Badge */}
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 text-white">
+                  <span className="text-[10px] uppercase font-bold tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
+                    Grooming Completed ✨
+                  </span>
+                  <h3 className="text-base font-black mt-1">
+                    น้อง{activeLinePreviewItem.petName} กรูมมิ่งเสร็จแล้วค่ะ! 🐾
+                  </h3>
+                  <p className="text-xs text-white/90">
+                    เรียนคุณ {activeLinePreviewItem.customerName} มารับน้องได้เลยนะคะ
+                  </p>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 space-y-2.5 text-xs">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-slate-500">บริการที่ทำ:</span>
+                    <strong className="text-slate-800">{activeLinePreviewItem.serviceName}</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-slate-500">ช่างผู้ดูแล:</span>
+                    <span className="font-semibold text-slate-700">{activeLinePreviewItem.groomerName || 'ช่างประจำ'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-slate-500">ยอดค่าบริการ:</span>
+                    <strong className="text-emerald-600 text-sm font-black">
+                      {(activeLinePreviewItem.priceMinor / 100).toLocaleString('th-TH')} ฿
+                    </strong>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-500">สถานที่รับ:</span>
+                    <span className="text-slate-700">สาขาทองหล่อ (สุขุมวิท 55)</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons inside LINE card */}
+                <div className="p-3 bg-slate-50 border-t border-slate-100 flex gap-2">
+                  <a
+                    href="tel:0812345678"
+                    className="flex-1 py-2 text-center text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50"
+                  >
+                    📞 โทรติดต่อร้าน
+                  </a>
+                  <button
+                    onClick={() => {
+                      showToast(`📲 ส่งข้อความ LINE สำเร็จไปยัง ${activeLinePreviewItem.customerPhone}`);
+                      setActiveLinePreviewItem(null);
+                    }}
+                    className="flex-1 py-2 text-center text-xs font-bold text-white bg-[#00B900] hover:bg-[#009e00] rounded-xl shadow-xs cursor-pointer"
+                  >
+                    ✓ ส่ง LINE ตอนนี้
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

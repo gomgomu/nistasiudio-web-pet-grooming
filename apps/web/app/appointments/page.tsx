@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -24,6 +24,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { AppointmentDetailDrawer } from '../../components/appointments/appointment-detail-drawer';
+import { useBooking, CreatedAppointmentEventData } from '../../contexts/booking-context';
 
 export type CalendarViewMode = 'day' | 'week' | 'list';
 
@@ -63,10 +64,8 @@ interface MockAppointment {
 }
 
 const mockStaffList: MockStaff[] = [
-  { id: 'u1', name: 'เอกชัย ช่างตัดขน', nickname: 'ช่างเอก', role: 'GROOMER', avatarBg: 'bg-blue-100 text-[#0071e3]', avatarText: 'เอก' },
-  { id: 'u2', name: 'แนนซี่ กรูมเมอร์', nickname: 'ช่างแนน', role: 'GROOMER', avatarBg: 'bg-indigo-100 text-indigo-600', avatarText: 'แนน' },
-  { id: 'u3', name: 'สพ.ญ. วิภา สัตวแพทย์', nickname: 'หมอวิภา', role: 'VETERINARIAN', avatarBg: 'bg-emerald-100 text-emerald-600', avatarText: 'วิภา' },
-  { id: 'u4', name: 'น.สพ. ณัฐ ตรวจรักษา', nickname: 'หมอณัฐ', role: 'VETERINARIAN', avatarBg: 'bg-amber-100 text-amber-700', avatarText: 'ณัฐ' },
+  { id: 'u-groomer-01', name: 'เอกชัย สกิลทอง (ช่างกรูมมิ่ง)', nickname: 'ช่างเอก', role: 'GROOMER', avatarBg: 'bg-teal-100 text-teal-700', avatarText: 'เอก' },
+  { id: 'u-vet-01', name: 'สพ.ญ. น้ำใส ใจดี (สัตวแพทย์)', nickname: 'หมอน้ำใส', role: 'VETERINARIAN', avatarBg: 'bg-purple-100 text-purple-700', avatarText: 'น้ำใส' },
 ];
 
 const initialAppointments: MockAppointment[] = [
@@ -86,7 +85,7 @@ const initialAppointments: MockAppointment[] = [
     serviceId: 's1',
     serviceName: 'อาบน้ำ + ตัดแต่งทรงกรูมมิ่ง สุนัขพันธุ์เล็ก',
     serviceCategory: 'GROOMING',
-    staffId: 'u1',
+    staffId: 'u-groomer-01',
     staffName: 'ช่างเอก',
     startAt: '2026-08-25T09:00:00.000Z',
     endAt: '2026-08-25T10:30:00.000Z',
@@ -109,10 +108,10 @@ const initialAppointments: MockAppointment[] = [
     serviceId: 's2',
     serviceName: 'อาบน้ำกำจัดขนผลัด + สปาโอโซน สุนัขใหญ่',
     serviceCategory: 'SPA',
-    staffId: 'u2',
-    staffName: 'ช่างแนน',
-    startAt: '2026-08-25T09:30:00.000Z',
-    endAt: '2026-08-25T11:30:00.000Z',
+    staffId: 'u-groomer-01',
+    staffName: 'ช่างเอก',
+    startAt: '2026-08-25T11:00:00.000Z',
+    endAt: '2026-08-25T12:30:00.000Z',
     status: 'CHECKED_IN',
     priceMinor: 95000,
     notes: 'ใช้แชมพู Hypoallergenic',
@@ -133,8 +132,8 @@ const initialAppointments: MockAppointment[] = [
     serviceId: 's3',
     serviceName: 'ตรวจสุขภาพประจำปี + ฉีดวัคซีนรวมแมว',
     serviceCategory: 'VACCINE',
-    staffId: 'u3',
-    staffName: 'หมอวิภา',
+    staffId: 'u-vet-01',
+    staffName: 'หมอน้ำใส',
     startAt: '2026-08-25T10:00:00.000Z',
     endAt: '2026-08-25T10:30:00.000Z',
     status: 'CONFIRMED',
@@ -156,10 +155,10 @@ const initialAppointments: MockAppointment[] = [
     serviceId: 's1',
     serviceName: 'ตัดขนทรงเทดดี้แบร์ สุนัขเล็ก',
     serviceCategory: 'GROOMING',
-    staffId: 'u1',
+    staffId: 'u-groomer-01',
     staffName: 'ช่างเอก',
-    startAt: '2026-08-25T11:00:00.000Z',
-    endAt: '2026-08-25T12:00:00.000Z',
+    startAt: '2026-08-25T14:00:00.000Z',
+    endAt: '2026-08-25T15:00:00.000Z',
     status: 'CONFIRMED',
     priceMinor: 50000,
     notes: 'ขอช่างเอกประจำน้องคุ้นเคย',
@@ -167,30 +166,6 @@ const initialAppointments: MockAppointment[] = [
   },
   {
     id: 'apt-05',
-    customerId: 'c5',
-    customerName: 'คุณปรียา สดใส',
-    customerPhone: '086-789-0123',
-    petId: 'p5',
-    petName: 'น้องบะหมี่',
-    petSpecies: 'CAT',
-    petBreed: 'เปอร์เซีย (Persian)',
-    petWeight: 4.8,
-    petAllergies: 'ไม่มี',
-    petBehavior: 'ดุนิดหน่อยเวลาตัดสังกะตัง',
-    serviceId: 's4',
-    serviceName: 'ตัดสังกะตัง + อาบน้ำตัดเล็บแมวขนยาว',
-    serviceCategory: 'GROOMING',
-    staffId: 'u2',
-    staffName: 'ช่างแนน',
-    startAt: '2026-08-25T13:30:00.000Z',
-    endAt: '2026-08-25T15:00:00.000Z',
-    status: 'PENDING',
-    priceMinor: 65000,
-    notes: 'มีสังกะตังแน่นบริเวณใต้คอและขาหลัง',
-    source: 'PHONE',
-  },
-  {
-    id: 'apt-06',
     customerId: 'c6',
     customerName: 'คุณธนพล มั่งมี',
     customerPhone: '095-678-1234',
@@ -203,8 +178,8 @@ const initialAppointments: MockAppointment[] = [
     serviceId: 's5',
     serviceName: 'ตรวจผิวหนัง ผื่นแดง + ป้ายยาเฉพาะจุด',
     serviceCategory: 'CLINIC',
-    staffId: 'u4',
-    staffName: 'หมอณัฐ',
+    staffId: 'u-vet-01',
+    staffName: 'หมอน้ำใส',
     startAt: '2026-08-25T14:00:00.000Z',
     endAt: '2026-08-25T14:45:00.000Z',
     status: 'CONFIRMED',
@@ -213,7 +188,7 @@ const initialAppointments: MockAppointment[] = [
     source: 'WALK_IN',
   },
   {
-    id: 'apt-07',
+    id: 'apt-06',
     customerId: 'c7',
     customerName: 'คุณวราภรณ์ สุขใจ',
     customerPhone: '082-123-9876',
@@ -226,8 +201,8 @@ const initialAppointments: MockAppointment[] = [
     serviceId: 's3',
     serviceName: 'ฉีดวัคซีนพิษสุนัขบ้า + ถ่ายพยาธิ',
     serviceCategory: 'VACCINE',
-    staffId: 'u3',
-    staffName: 'หมอวิภา',
+    staffId: 'u-vet-01',
+    staffName: 'หมอน้ำใส',
     startAt: '2026-08-25T15:30:00.000Z',
     endAt: '2026-08-25T16:00:00.000Z',
     status: 'COMPLETED',
@@ -243,6 +218,7 @@ const timeSlots = [
 ];
 
 export default function AppointmentsPage() {
+  const { openBookingModal } = useBooking();
   const [viewMode, setViewMode] = useState<CalendarViewMode>('day');
   const [selectedDate, setSelectedDate] = useState<string>('2026-08-25');
   const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
@@ -251,6 +227,20 @@ export default function AppointmentsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [appointments, setAppointments] = useState<MockAppointment[]>(initialAppointments);
   const [selectedAppointment, setSelectedAppointment] = useState<MockAppointment | null>(null);
+
+  // Listen to newly created appointments from modal anywhere in the app
+  useEffect(() => {
+    const handleNewAppointment = (e: CustomEvent<CreatedAppointmentEventData>) => {
+      if (e.detail) {
+        setAppointments((prev) => [e.detail as MockAppointment, ...prev]);
+      }
+    };
+
+    window.addEventListener('petflow:appointment-created' as any, handleNewAppointment as any);
+    return () => {
+      window.removeEventListener('petflow:appointment-created' as any, handleNewAppointment as any);
+    };
+  }, []);
 
   // Filtered Appointments
   const filteredAppointments = useMemo(() => {
@@ -446,9 +436,7 @@ export default function AppointmentsPage() {
 
           {/* New Appointment CTA */}
           <button
-            onClick={() => {
-              alert('เปิดแบบฟอร์มการจองด่วน (Quick Booking Modal ใน PF-027)');
-            }}
+            onClick={() => openBookingModal({ date: selectedDate })}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold shadow-sm shadow-blue-500/25 transition active:scale-[0.98] cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -684,6 +672,17 @@ export default function AppointmentsPage() {
                             </div>
                           );
                         })}
+
+                        {!isBreakHour && aptsInSlot.length === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => openBookingModal({ date: selectedDate, time: timeStr, staffId: staff.id })}
+                            className="w-full h-full min-h-[70px] rounded-xl border border-dashed border-transparent hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 text-slate-300 hover:text-[#0071e3] transition flex items-center justify-center gap-1 text-[11px] font-semibold opacity-0 group-hover:opacity-100 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>จองเวลานี้</span>
+                          </button>
+                        )}
                       </div>
                     );
                   })}
