@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sparkles } from 'lucide-react';
 
 export default function Loading() {
   return (
@@ -6,7 +7,7 @@ export default function Loading() {
       <div className="flex flex-col items-center space-y-4">
         <div className="relative flex h-16 w-16 items-center justify-center">
           <div className="absolute h-16 w-16 animate-spin rounded-full border-4 border-blue-500/20 border-t-[#0071e3]" />
-          <span className="text-2xl animate-pulse">🐾</span>
+          <Sparkles className="h-7 w-7 text-[#0071e3] animate-pulse" />
         </div>
         <div className="space-y-1 text-center">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">

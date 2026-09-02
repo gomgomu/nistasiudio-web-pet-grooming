@@ -41,7 +41,7 @@ export const PRESET_USERS: Record<string, AuthUserProfile> = {
     roleTitle: 'Super Admin (DEV Platform HQ)',
     branchId: 'HQ',
     branchName: 'SaaS Headquarter',
-    avatarText: '👑',
+    avatarText: 'AD',
     avatarGradient: 'from-violet-600 to-purple-800',
   },
   groomer: {

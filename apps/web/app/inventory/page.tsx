@@ -18,6 +18,10 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   ShoppingBag,
+  Scissors,
+  Stethoscope,
+  Syringe,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@petflow/ui';
 import { InventoryTransactionType } from '@petflow/types';
@@ -537,25 +541,29 @@ export default function InventoryManagementPage() {
               {/* Category Pills */}
               <div className="flex items-center gap-1.5 overflow-x-auto">
                 {[
-                  { id: 'ALL', label: 'ทั้งหมด' },
-                  { id: 'GROOMING_SUPPLY', label: '✂️ กรูมมิ่ง' },
-                  { id: 'MEDICATION', label: '🏥 ยา' },
-                  { id: 'VACCINE', label: '💉 วัคซีน' },
-                  { id: 'PETSHOP', label: '🛍️ เพ็ทช็อป' },
-                  { id: 'SPA', label: '🧴 สปา' },
-                ].map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex-shrink-0 cursor-pointer ${
-                      selectedCategory === cat.id
-                        ? 'bg-[#0071e3] text-white shadow-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+                  { id: 'ALL', label: 'ทั้งหมด', icon: Package },
+                  { id: 'GROOMING_SUPPLY', label: 'กรูมมิ่ง', icon: Scissors },
+                  { id: 'MEDICATION', label: 'ยา', icon: Stethoscope },
+                  { id: 'VACCINE', label: 'วัคซีน', icon: Syringe },
+                  { id: 'PETSHOP', label: 'เพ็ทช็อป', icon: ShoppingBag },
+                  { id: 'SPA', label: 'สปา', icon: Sparkles },
+                ].map((cat) => {
+                  const Icon = cat.icon;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition flex-shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                        selectedCategory === cat.id
+                          ? 'bg-[#0071e3] text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      {cat.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

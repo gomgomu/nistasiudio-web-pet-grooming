@@ -87,8 +87,8 @@ export function Sidebar({
         {/* Brand Header */}
         <div className="flex h-16 items-center justify-between px-5 border-b border-slate-200/60 dark:border-slate-800/60">
           <Link href="/" className="flex items-center gap-3 group" onClick={onCloseMobile}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0071e3] to-[#0058b8] text-white font-bold shadow-md shadow-blue-500/25 transition-transform group-hover:scale-105">
-              🐾
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0071e3] to-[#0058b8] text-white shadow-md shadow-blue-500/25 transition-transform group-hover:scale-105">
+              <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">

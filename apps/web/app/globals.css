@@ -26,7 +26,13 @@
   --brand-blue-subtle: rgba(10, 132, 255, 0.15);
 }
 
+html {
+  font-size: 16px;
+}
+
 body {
+  font-size: 1rem;
+  line-height: 1.5;
   color: var(--foreground);
   background: var(--background);
   font-family: 'Noto Sans Thai', 'Noto Sans', 'Google Sans', -apple-system, BlinkMacSystemFont, Arial, sans-serif;

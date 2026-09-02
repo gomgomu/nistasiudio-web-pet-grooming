@@ -27,6 +27,9 @@ import {
   ShieldCheck,
   Send,
   Zap,
+  Crown,
+  UserPlus,
+  Rocket,
 } from 'lucide-react';
 import { Badge } from '@petflow/ui';
 import {
@@ -212,8 +215,8 @@ export default function OwnerDashboardPage() {
                 ข้อมูล ณ {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              ภาพรวมผลประกอบการประจำเดือนนี้ 🚀
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2">
+              ภาพรวมผลประกอบการประจำเดือนนี้ <Rocket className="w-6 h-6 text-amber-300 inline shrink-0" />
             </h1>
             <p className="text-blue-100 text-xs sm:text-sm max-w-2xl leading-relaxed">
               รายได้เติบโต <span className="font-bold text-white">+{metrics.revenue.growthRate}%</span> เมื่อเทียบกับเดือนที่แล้ว โดยมีสัดส่วนรายได้จากลูกค้าประจำสูงถึง <span className="font-bold text-white">{metrics.customerAndLtv.repeatRevenueShare}%</span>
@@ -489,7 +492,9 @@ export default function OwnerDashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
             {/* VIP */}
             <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 text-center">
-              <span className="text-xs font-extrabold text-amber-800 dark:text-amber-300">👑 VIP Platinum</span>
+              <span className="text-xs font-extrabold text-amber-800 dark:text-amber-300 flex items-center justify-center gap-1">
+                <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> VIP Platinum
+              </span>
               <div className="text-2xl font-black text-amber-900 dark:text-amber-200 mt-1">
                 {metrics.retentionSummary.vipCount}
               </div>
@@ -498,7 +503,9 @@ export default function OwnerDashboardPage() {
 
             {/* Active */}
             <div className="p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-center">
-              <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-300">✨ Active Loyal</span>
+              <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Active Loyal
+              </span>
               <div className="text-2xl font-black text-emerald-900 dark:text-emerald-200 mt-1">
                 {metrics.retentionSummary.activeCount}
               </div>
@@ -507,7 +514,9 @@ export default function OwnerDashboardPage() {
 
             {/* New */}
             <div className="p-3.5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/60 text-center">
-              <span className="text-xs font-extrabold text-blue-800 dark:text-blue-300">🌱 New Customer</span>
+              <span className="text-xs font-extrabold text-blue-800 dark:text-blue-300 flex items-center justify-center gap-1">
+                <UserPlus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> New Customer
+              </span>
               <div className="text-2xl font-black text-blue-900 dark:text-blue-200 mt-1">
                 {metrics.retentionSummary.newCount}
               </div>
@@ -516,7 +525,9 @@ export default function OwnerDashboardPage() {
 
             {/* At Risk */}
             <div className="p-3.5 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60 text-center">
-              <span className="text-xs font-extrabold text-rose-800 dark:text-rose-300">⚠️ At-Risk</span>
+              <span className="text-xs font-extrabold text-rose-800 dark:text-rose-300 flex items-center justify-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" /> At-Risk
+              </span>
               <div className="text-2xl font-black text-rose-900 dark:text-rose-200 mt-1">
                 {metrics.retentionSummary.atRiskCount}
               </div>
@@ -525,7 +536,9 @@ export default function OwnerDashboardPage() {
 
             {/* Lost */}
             <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center">
-              <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300">💤 Inactive Lost</span>
+              <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1">
+                <UserX className="w-3.5 h-3.5 text-slate-500" /> Inactive Lost
+              </span>
               <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                 {metrics.retentionSummary.lostCount}
               </div>

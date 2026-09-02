@@ -310,7 +310,7 @@ const STAGE_COLUMNS: ColumnConfig[] = [
     borderColor: 'border-amber-200 dark:border-amber-900/50',
     badgeBg: 'bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200',
     nextStage: 'BATHING',
-    nextActionLabel: 'เริ่มอาบน้ำ 🛁',
+    nextActionLabel: 'เริ่มอาบน้ำ',
     nextActionColor: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20',
   },
   {
@@ -322,7 +322,7 @@ const STAGE_COLUMNS: ColumnConfig[] = [
     borderColor: 'border-blue-200 dark:border-blue-900/50',
     badgeBg: 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200',
     nextStage: 'DRYING',
-    nextActionLabel: 'เริ่มเป่าขน 💨',
+    nextActionLabel: 'เริ่มเป่าขน',
     nextActionColor: 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-500/20',
   },
   {
@@ -334,7 +334,7 @@ const STAGE_COLUMNS: ColumnConfig[] = [
     borderColor: 'border-sky-200 dark:border-sky-900/50',
     badgeBg: 'bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-200',
     nextStage: 'GROOMING',
-    nextActionLabel: 'เริ่มตัดแต่งขน ✂️',
+    nextActionLabel: 'เริ่มตัดแต่งขน',
     nextActionColor: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20',
   },
   {
@@ -346,7 +346,7 @@ const STAGE_COLUMNS: ColumnConfig[] = [
     borderColor: 'border-indigo-200 dark:border-indigo-900/50',
     badgeBg: 'bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200',
     nextStage: 'FINISHING',
-    nextActionLabel: 'ตรวจเช็ค & เก็บงาน ✨',
+    nextActionLabel: 'ตรวจเช็ค & เก็บงาน',
     nextActionColor: 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20',
   },
   {
@@ -358,7 +358,7 @@ const STAGE_COLUMNS: ColumnConfig[] = [
     borderColor: 'border-purple-200 dark:border-purple-900/50',
     badgeBg: 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200',
     nextStage: 'READY',
-    nextActionLabel: 'พร้อมรับกลับ 🎉',
+    nextActionLabel: 'พร้อมรับกลับ',
     nextActionColor: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20',
   },
   {
@@ -370,7 +370,7 @@ const STAGE_COLUMNS: ColumnConfig[] = [
     borderColor: 'border-emerald-200 dark:border-emerald-900/50',
     badgeBg: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200',
     nextStage: 'PICKED_UP',
-    nextActionLabel: 'รับน้องแล้ว 🐾',
+    nextActionLabel: 'บันทึกรับน้องกลับ',
     nextActionColor: 'bg-slate-900 hover:bg-black text-white shadow-slate-900/20',
   },
   {

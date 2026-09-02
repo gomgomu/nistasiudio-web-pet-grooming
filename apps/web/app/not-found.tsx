@@ -1,14 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '@petflow/ui';
-import { Home, Search } from 'lucide-react';
+import { Home, Search, FileQuestion } from 'lucide-react';
 
 export default function NotFound() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#f5f5f7] px-6 py-12 dark:bg-[#000000]">
       <div className="mx-auto max-w-md text-center space-y-6">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50 dark:bg-blue-950/50 text-[#0071e3] text-4xl shadow-xl shadow-blue-900/10 border border-blue-100 dark:border-blue-900/40">
-          🐾
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50 dark:bg-blue-950/50 text-[#0071e3] shadow-xl shadow-blue-900/10 border border-blue-100 dark:border-blue-900/40">
+          <FileQuestion className="h-10 w-10 text-[#0071e3]" />
         </div>
 
         <div className="space-y-2">

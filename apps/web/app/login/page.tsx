@@ -147,8 +147,8 @@ export default function LoginPage() {
       <div className="w-full max-w-lg z-10 space-y-6">
         {/* Brand Logo & Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0071e3] to-[#0058b8] text-white shadow-xl shadow-blue-500/30 text-2xl font-bold mb-1">
-            🐾
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0071e3] to-[#0058b8] text-white shadow-xl shadow-blue-500/30 mb-1">
+            <Sparkles className="w-7 h-7 text-white" />
           </div>
           <div className="flex items-center justify-center gap-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-white">
