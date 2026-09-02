@@ -27,7 +27,7 @@ import { Button } from '@petflow/ui';
 import { PaymentMethodType } from '@petflow/types';
 import { ReceiptModal, ReceiptData, defaultMockReceiptData } from '@/components/pos/receipt-modal';
 
-export interface PosCatalogItem {
+interface PosCatalogItem {
   id: string;
   name: string;
   category: 'GROOMING' | 'CLINIC' | 'VACCINE' | 'PETSHOP' | 'SPA';
@@ -38,7 +38,7 @@ export interface PosCatalogItem {
   stock?: number;
 }
 
-export interface PosCartItem {
+interface PosCartItem {
   id: string;
   catalogItemId: string;
   name: string;
@@ -52,14 +52,14 @@ export interface PosCartItem {
   commissionRate?: number; // percentage, e.g. 15%
 }
 
-export interface PetProfileChoice {
+interface PetProfileChoice {
   id: string;
   name: string;
   species: 'DOG' | 'CAT';
   breed: string;
 }
 
-export interface CustomerProfileOption {
+interface CustomerProfileOption {
   id: string;
   name: string;
   phone: string;
@@ -69,14 +69,14 @@ export interface CustomerProfileOption {
   pets: PetProfileChoice[];
 }
 
-export interface PosStaffOption {
+interface PosStaffOption {
   id: string;
   name: string;
   role: string;
   commissionRate: number;
 }
 
-export const POS_STAFF_OPTIONS: PosStaffOption[] = [
+const POS_STAFF_OPTIONS: PosStaffOption[] = [
   { id: 'st-1', name: 'ช่างเอก (Groomer)', role: 'ช่างกรูมมิ่ง', commissionRate: 15 },
   { id: 'st-2', name: 'ช่างแนน (Groomer)', role: 'ช่างกรูมมิ่ง', commissionRate: 15 },
   { id: 'st-3', name: 'น.สพ. วรวิทย์ (หมอวิทย์ OPD)', role: 'สัตวแพทย์', commissionRate: 10 },
