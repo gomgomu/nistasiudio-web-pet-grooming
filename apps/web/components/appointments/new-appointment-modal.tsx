@@ -248,8 +248,6 @@ export function NewAppointmentModal() {
     }
   }, [prefill]);
 
-  if (!isOpen) return null;
-
   // Selected Service
   const activeService = PRESET_SERVICES.find((s) => s.id === selectedServiceId) || PRESET_SERVICES[0];
   const duration = customDuration ?? activeService.durationMinutes;
@@ -370,6 +368,8 @@ export function NewAppointmentModal() {
       }, 1200);
     }, 400);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
