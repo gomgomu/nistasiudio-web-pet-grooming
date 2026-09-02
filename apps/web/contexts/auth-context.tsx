@@ -69,8 +69,10 @@ export const PRESET_USERS: Record<string, AuthUserProfile> = {
 };
 
 interface AuthContextType {
-  user: AuthUserProfile;
-  setUser: (user: AuthUserProfile) => void;
+  user: AuthUserProfile | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  setUser: (user: AuthUserProfile | null) => void;
   loginAs: (roleId: string, branchId?: string) => AuthUserProfile;
   logout: () => void;
   isRole: (...roles: UserRole[]) => boolean;
@@ -81,7 +83,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_STORAGE_KEY = 'petflow_current_user';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<AuthUserProfile>(PRESET_USERS.owner);
+  const [user, setUserState] = useState<AuthUserProfile | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -94,15 +96,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch {
-      // fallback to default
+      // fallback to null
     }
     setIsLoaded(true);
   }, []);
 
-  const setUser = (newUser: AuthUserProfile) => {
+  const setUser = (newUser: AuthUserProfile | null) => {
     setUserState(newUser);
     try {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
+      if (newUser) {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
+      } else {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
     } catch {}
   };
 
@@ -126,17 +132,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    setUser(PRESET_USERS.owner);
+    setUser(null);
   };
 
   const isRole = (...roles: UserRole[]) => {
-    return roles.includes(user.role);
+    return user ? roles.includes(user.role) : false;
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        isAuthenticated: Boolean(user),
+        isLoading: !isLoaded,
         setUser,
         loginAs,
         logout,

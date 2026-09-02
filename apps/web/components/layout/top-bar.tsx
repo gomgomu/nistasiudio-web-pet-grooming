@@ -25,8 +25,13 @@ export function TopBar({
   onOpenMobile?: () => void;
   onOpenSearch?: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { openBookingModal } = useBooking();
+
+  const currentBranchName = user?.branchName || 'สาขาทองหล่อ (Main)';
+  const currentRole = user?.role || 'TENANT_OWNER';
+  const currentName = user?.name || 'ผู้ใช้งาน';
+  const currentRoleTitle = user?.roleTitle || 'ผู้ดูแลระบบ';
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/80 bg-white/80 px-3 sm:px-6 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/80 transition-colors gap-2">
@@ -48,12 +53,12 @@ export function TopBar({
           </div>
           <div className="text-left hidden sm:block">
             <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[140px] md:max-w-[200px]">
-              {user.branchName}
+              {currentBranchName}
             </p>
           </div>
           <div className="text-left sm:hidden">
             <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-              {user.branchName.split(' ')[0]}
+              {currentBranchName.split(' ')[0]}
             </p>
           </div>
           <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -78,7 +83,7 @@ export function TopBar({
       {/* Right Section: Quick Actions + Notifications + Profile */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {/* Quick Add Button for Store Staff */}
-        {user.role !== 'SAAS_ADMIN' && (
+        {currentRole !== 'SAAS_ADMIN' && (
           <Button
             size="sm"
             onClick={() => openBookingModal()}
@@ -101,21 +106,32 @@ export function TopBar({
         >
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${
-              user.avatarGradient || 'from-blue-500 to-[#0071e3]'
+              user?.avatarGradient || 'from-blue-500 to-[#0071e3]'
             } text-white font-bold text-xs shadow-sm shadow-blue-500/20 shrink-0 group-hover:scale-105 transition-transform`}
           >
-            {user.avatarText || user.name[0] || <User className="h-4 w-4" />}
+            {user?.avatarText || currentName[0] || <User className="h-4 w-4" />}
           </div>
           <div className="hidden xl:block text-left">
             <p className="text-xs font-semibold leading-tight text-slate-900 dark:text-slate-100 group-hover:text-[#0071e3] transition-colors">
-              {user.name}
+              {currentName}
             </p>
-            <p className="text-[10px] text-slate-400">{user.roleTitle}</p>
+            <p className="text-[10px] text-slate-400">{currentRoleTitle}</p>
           </div>
           <Badge variant="default" className="hidden lg:inline-flex text-[10px]">
             🇹🇭 TH
           </Badge>
-          <LogOut className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-500 transition-colors ml-1 hidden sm:inline" />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              logout();
+            }}
+            title="ออกจากระบบ"
+            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-400 hover:text-rose-500 cursor-pointer ml-0.5"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </Link>
       </div>
     </header>

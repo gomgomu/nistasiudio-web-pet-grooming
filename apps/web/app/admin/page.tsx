@@ -390,7 +390,7 @@ export default function SaaSAdminPage() {
     return { total, active, mrr, totalUsers };
   }, [tenants]);
 
-  if (user.role !== 'SAAS_ADMIN') {
+  if (user?.role !== 'SAAS_ADMIN') {
     return (
       <div className="max-w-lg mx-auto py-16 text-center space-y-4">
         <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto text-2xl font-bold border border-amber-500/20">
@@ -400,7 +400,7 @@ export default function SaaSAdminPage() {
           สงวนสิทธิ์เฉพาะ Super Admin (DEV HQ)
         </h2>
         <p className="text-xs text-slate-500 leading-relaxed">
-          คุณกำลังล็อกอินอยู่ในบทบาท <strong>{user.roleTitle}</strong> หน้านี้เป็นศูนย์ควบคุมแพลตฟอร์มส่วนกลางสำหรับทีมผู้พัฒนาเท่านั้น
+          คุณกำลังล็อกอินอยู่ในบทบาท <strong>{user?.roleTitle || 'ผู้ใช้งาน'}</strong> หน้านี้เป็นศูนย์ควบคุมแพลตฟอร์มส่วนกลางสำหรับทีมผู้พัฒนาเท่านั้น
         </p>
         <div className="pt-2">
           <Link

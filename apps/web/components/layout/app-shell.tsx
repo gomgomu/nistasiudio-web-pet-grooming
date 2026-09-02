@@ -1,14 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { TopBar } from './top-bar';
 import { GlobalSearchModal } from '../search/global-search-modal';
 import { NewAppointmentModal } from '../appointments/new-appointment-modal';
+import { useAuth } from '../../contexts/auth-context';
+import { Sparkles } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -24,9 +28,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Redirect to /login if user is not authenticated and not on login page
+  useEffect(() => {
+    if (!isLoading && !user && pathname !== '/login') {
+      router.replace('/login');
+    }
+  }, [isLoading, user, pathname, router]);
+
   // For authentication pages (e.g. /login), render full screen without layout shell
   if (pathname === '/login') {
     return <>{children}</>;
+  }
+
+  // Loading state while checking authentication from localStorage
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-[#f5f5f7] dark:bg-[#000000]">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="relative flex h-16 w-16 items-center justify-center">
+            <div className="absolute h-16 w-16 animate-spin rounded-full border-4 border-blue-500/20 border-t-[#0071e3]" />
+            <Sparkles className="h-7 w-7 text-[#0071e3] animate-pulse" />
+          </div>
+          <p className="text-xs text-slate-400 font-semibold">กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, render nothing while redirecting
+  if (!user) {
+    return null;
   }
 
   return (

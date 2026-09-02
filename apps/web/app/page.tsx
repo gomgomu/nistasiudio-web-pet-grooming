@@ -243,7 +243,7 @@ export default function HomePage() {
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5 text-[#0071e3]" /> ภาพรวมผู้บริหาร ({user.roleTitle.split(' ')[0]})
+              <BarChart3 className="w-3.5 h-3.5 text-[#0071e3]" /> ภาพรวมผู้บริหาร ({user?.roleTitle ? user.roleTitle.split(' ')[0] : 'ผู้บริหาร'})
             </button>
             <button
               onClick={() => setActiveTab('QUEUE')}
@@ -324,10 +324,10 @@ export default function HomePage() {
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                สวัสดีคุณ{user.name}! ยอดขายเดือนนี้ ฿{(metrics.revenue.totalRevenueMinor / 100).toLocaleString('th-TH')} (+{metrics.revenue.growthRate}%)
+                สวัสดีคุณ{user?.name || 'ผู้ใช้งาน'}! ยอดขายเดือนนี้ ฿{(metrics.revenue.totalRevenueMinor / 100).toLocaleString('th-TH')} (+{metrics.revenue.growthRate}%)
               </h1>
               <p className="text-blue-100 text-xs sm:text-sm max-w-2xl leading-relaxed">
-                {user.roleTitle} ประจำ{user.branchName} • คิวกรูมมิ่งในระบบวันนี้ {queue.length} คิว • สัดส่วนรายได้ลูกค้าประจำ {metrics.customerAndLtv.repeatRevenueShare}%
+                {user?.roleTitle || 'เจ้าของร้าน'} ประจำ{user?.branchName || 'สาขาทองหล่อ'} • คิวกรูมมิ่งในระบบวันนี้ {queue.length} คิว • สัดส่วนรายได้ลูกค้าประจำ {metrics.customerAndLtv.repeatRevenueShare}%
               </p>
             </div>
 

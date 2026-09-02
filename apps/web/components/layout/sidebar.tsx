@@ -61,9 +61,9 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { user } = useAuth();
-
+  const currentRole = user?.role || 'TENANT_OWNER';
   const visibleNavItems = navItems.filter(
-    (item) => !item.allowedRoles || item.allowedRoles.includes(user.role)
+    (item) => !item.allowedRoles || item.allowedRoles.includes(currentRole)
   );
 
   return (
@@ -119,7 +119,7 @@ export function Sidebar({
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
-            เมนูหลัก ({user.roleTitle.split(' ')[0]})
+            เมนูหลัก ({user?.roleTitle ? user.roleTitle.split(' ')[0] : 'ระบบ'})
           </div>
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
@@ -171,7 +171,7 @@ export function Sidebar({
 
         {/* Tenant/Branch Badge & Subscription Footer */}
         <div className="p-3.5 border-t border-slate-200/60 dark:border-slate-800/60">
-          {user.role === 'SAAS_ADMIN' ? (
+          {user?.role === 'SAAS_ADMIN' ? (
             <Link
               href="/admin"
               className="block rounded-2xl bg-gradient-to-br from-violet-950/40 to-purple-900/30 p-3 dark:bg-slate-800/70 border border-violet-500/30 hover:border-violet-500/50 transition-all group"
@@ -188,7 +188,7 @@ export function Sidebar({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
-                {user.name}
+                {user?.name || 'Super Admin'}
               </p>
             </Link>
           ) : (
@@ -204,7 +204,7 @@ export function Sidebar({
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[110px]">
-                    {user.branchName}
+                    {user?.branchName || 'สาขาทองหล่อ'}
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 group-hover:bg-[#0071e3] group-hover:text-white transition">

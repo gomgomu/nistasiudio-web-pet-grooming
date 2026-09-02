@@ -135,7 +135,7 @@ const SUPER_ADMIN_NOTIFICATIONS: AppNotification[] = [
 
 export function NotificationPopover() {
   const { user } = useAuth();
-  const isSuperAdmin = user.role === 'SAAS_ADMIN';
+  const isSuperAdmin = user?.role === 'SAAS_ADMIN';
 
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>(
