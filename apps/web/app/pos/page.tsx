@@ -480,7 +480,7 @@ export default function PosCashierPage() {
     try {
       if (typeof window === 'undefined') return;
       const raw = localStorage.getItem('petflow_inventory_items');
-      let items = raw ? JSON.parse(raw) : null;
+      const items = raw ? JSON.parse(raw) : null;
       if (items && Array.isArray(items)) {
         soldItems.forEach((sold) => {
           if (sold.itemType === 'PRODUCT' || sold.itemType === 'MEDICATION') {
