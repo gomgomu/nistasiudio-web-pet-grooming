@@ -10,8 +10,15 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // Enable CORS
+  const corsOrigin = process.env.CORS_ORIGIN;
+  const allowedOrigins = corsOrigin
+    ? corsOrigin.includes(',')
+      ? corsOrigin.split(',').map((o) => o.trim())
+      : corsOrigin
+    : '*';
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: allowedOrigins,
     credentials: true,
   });
 
