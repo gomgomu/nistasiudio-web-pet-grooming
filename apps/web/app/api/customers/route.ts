@@ -10,8 +10,15 @@ export async function GET(req: Request) {
       where: { slug: tenantSlug },
     });
 
+    if (!tenant) {
+      return NextResponse.json(
+        { status: 'error', message: 'Tenant not found' },
+        { status: 404 }
+      );
+    }
+
     const customers = await prisma.customer.findMany({
-      where: tenant ? { tenantId: tenant.id } : {},
+      where: { tenantId: tenant.id },
       include: {
         pets: true,
       },
@@ -61,13 +68,9 @@ export async function POST(req: Request) {
       tenantSlug = 'demo-pet-clinic',
     } = body;
 
-    let tenant = await prisma.tenant.findFirst({
+    const tenant = await prisma.tenant.findFirst({
       where: { slug: tenantSlug },
     });
-
-    if (!tenant) {
-      tenant = await prisma.tenant.findFirst();
-    }
 
     if (!tenant) {
       return NextResponse.json(

@@ -35,19 +35,21 @@ export interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: 'ภาพรวมระบบ', href: '/', icon: LayoutDashboard, allowedRoles: ['TENANT_OWNER'] },
-  { title: 'นัดหมาย & ปฏิทิน', href: '/appointments', icon: Calendar, badge: '8', allowedRoles: ['TENANT_OWNER', 'GROOMER', 'VETERINARIAN'] },
-  { title: 'คิวกรูมมิ่ง (Queue)', href: '/grooming/queue', icon: Scissors, badge: '5', allowedRoles: ['TENANT_OWNER', 'GROOMER'] },
-  { title: 'ตรวจรักษา (Clinical)', href: '/clinical', icon: Stethoscope, badge: 'OPD', allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
-  { title: 'ลูกค้า & สัตว์เลี้ยง', href: '/customers', icon: Users, allowedRoles: ['TENANT_OWNER', 'GROOMER', 'VETERINARIAN'] },
-  { title: 'การรักษาลูกค้า (Retention)', href: '/retention', icon: UserCheck, badge: 'RFM', allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
-  { title: 'จุดขายหน้าร้าน (POS)', href: '/pos', icon: CreditCard, allowedRoles: ['TENANT_OWNER'] },
-  { title: 'คลังสินค้า (Stock)', href: '/inventory', icon: Package, allowedRoles: ['TENANT_OWNER', 'VETERINARIAN'] },
-  { title: 'รายงาน & วิเคราะห์', href: '/reports', icon: BarChart3, allowedRoles: ['TENANT_OWNER'] },
-  { title: 'แพ็กเกจ & บิล (SaaS)', href: '/settings/subscription', icon: Zap, badge: 'Pro', allowedRoles: ['TENANT_OWNER'] },
-  { title: 'SaaS Admin Hub', href: '/admin', icon: Shield, badge: 'HQ', allowedRoles: ['SAAS_ADMIN'] },
-  { title: 'Feature Flags Hub', href: '/admin/feature-flags', icon: Sliders, badge: 'Control', allowedRoles: ['SAAS_ADMIN'] },
-  { title: 'ตั้งค่าระบบ', href: '/settings', icon: Settings, allowedRoles: ['TENANT_OWNER'] },
+  { title: 'ภาพรวมระบบ', href: '/', icon: LayoutDashboard, allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST'] },
+  { title: 'นัดหมาย & ปฏิทิน', href: '/appointments', icon: Calendar, badge: '8', allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'GROOMER', 'VETERINARIAN', 'RECEPTIONIST'] },
+  { title: 'คิวกรูมมิ่ง (Queue)', href: '/grooming/queue', icon: Scissors, badge: '5', allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'GROOMER', 'RECEPTIONIST'] },
+  { title: 'ตรวจรักษา (Clinical)', href: '/clinical', icon: Stethoscope, badge: 'OPD', allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'VETERINARIAN'] },
+  { title: 'ลูกค้า & สัตว์เลี้ยง', href: '/customers', icon: Users, allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'GROOMER', 'VETERINARIAN', 'RECEPTIONIST'] },
+  { title: 'การรักษาลูกค้า (Retention)', href: '/retention', icon: UserCheck, badge: 'RFM', allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'VETERINARIAN'] },
+  { title: 'จุดขายหน้าร้าน (POS)', href: '/pos', icon: CreditCard, allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST'] },
+  { title: 'บริการ & ราคา', href: '/services', icon: Sparkles, allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'RECEPTIONIST'] },
+  { title: 'คลังสินค้า (Stock)', href: '/inventory', icon: Package, allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER', 'VETERINARIAN', 'RECEPTIONIST'] },
+  { title: 'รายงาน & วิเคราะห์', href: '/reports', icon: BarChart3, allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER'] },
+  { title: 'การแจ้งเตือน & LINE', href: '/notifications', icon: BellRing, allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER'] },
+  { title: 'แพ็กเกจ & บิล (SaaS)', href: '/settings/subscription', icon: Zap, badge: 'Pro', allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN'] },
+  { title: 'SaaS Admin Hub', href: '/admin', icon: Shield, badge: 'HQ', allowedRoles: ['SUPER_ADMIN', 'SAAS_ADMIN'] },
+  { title: 'Feature Flags Hub', href: '/admin/feature-flags', icon: Sliders, badge: 'Control', allowedRoles: ['SUPER_ADMIN', 'SAAS_ADMIN'] },
+  { title: 'ตั้งค่าระบบ', href: '/settings', icon: Settings, allowedRoles: ['TENANT_OWNER', 'TENANT_ADMIN', 'BRANCH_MANAGER'] },
 ];
 
 export function Sidebar({

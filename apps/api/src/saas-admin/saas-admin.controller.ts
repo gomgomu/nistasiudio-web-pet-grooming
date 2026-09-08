@@ -21,7 +21,7 @@ import { UserRole } from '@prisma/client';
 @ApiTags('SaaS Super Admin Console')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.TENANT_OWNER, UserRole.TENANT_ADMIN)
+@Roles(UserRole.SUPER_ADMIN)
 @Controller('saas-admin')
 export class SaaSAdminController {
   constructor(private readonly saasAdminService: SaaSAdminService) {}

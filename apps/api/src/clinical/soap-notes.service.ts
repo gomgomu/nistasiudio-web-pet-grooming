@@ -134,99 +134,101 @@ export class SoapNotesService {
       throw new NotFoundException('Clinic visit not found');
     }
 
-    // 1. Update Pet weight if provided
-    if (dto.vitals?.weightKg) {
-      await this.prisma.pet.update({
-        where: { id: existing.petId },
-        data: { weight: dto.vitals.weightKg },
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Update Pet weight if provided
+      if (dto.vitals?.weightKg) {
+        await tx.pet.update({
+          where: { id: existing.petId },
+          data: { weight: dto.vitals.weightKg },
+        });
+      }
+
+      // 2. Update ClinicVisit record
+      const updated = await tx.clinicVisit.update({
+        where: { id: visitId },
+        data: {
+          subjective: dto.subjective !== undefined ? dto.subjective : existing.subjective,
+          objective: dto.objective !== undefined ? dto.objective : existing.objective,
+          assessment: dto.assessment !== undefined ? dto.assessment : existing.assessment,
+          plan: dto.plan !== undefined ? dto.plan : existing.plan,
+          chiefComplaint:
+            dto.chiefComplaint !== undefined ? dto.chiefComplaint : existing.chiefComplaint,
+          symptoms: dto.symptoms !== undefined ? dto.symptoms : existing.symptoms,
+          diagnosis: dto.diagnosis !== undefined ? dto.diagnosis : existing.diagnosis,
+          differentialDiagnosis:
+            dto.differentialDiagnosis !== undefined
+              ? dto.differentialDiagnosis
+              : existing.differentialDiagnosis,
+          treatmentSummary:
+            dto.treatmentSummary !== undefined ? dto.treatmentSummary : existing.treatmentSummary,
+          dischargeNotes:
+            dto.dischargeNotes !== undefined ? dto.dischargeNotes : existing.dischargeNotes,
+          followUpDate:
+            dto.followUpDate !== undefined
+              ? dto.followUpDate
+                ? new Date(dto.followUpDate)
+                : null
+              : existing.followUpDate,
+          followUpReason:
+            dto.followUpReason !== undefined ? dto.followUpReason : existing.followUpReason,
+          weightKg: dto.vitals?.weightKg !== undefined ? dto.vitals.weightKg : existing.weightKg,
+          temperatureC:
+            dto.vitals?.temperatureC !== undefined
+              ? dto.vitals.temperatureC
+              : existing.temperatureC,
+          heartRateBpm:
+            dto.vitals?.heartRateBpm !== undefined
+              ? dto.vitals.heartRateBpm
+              : existing.heartRateBpm,
+          respiratoryRateBpm:
+            dto.vitals?.respiratoryRateBpm !== undefined
+              ? dto.vitals.respiratoryRateBpm
+              : existing.respiratoryRateBpm,
+          capillaryRefillTime:
+            dto.vitals?.capillaryRefillTime !== undefined
+              ? dto.vitals.capillaryRefillTime
+              : existing.capillaryRefillTime,
+          mucousMembrane:
+            dto.vitals?.mucousMembrane !== undefined
+              ? dto.vitals.mucousMembrane
+              : existing.mucousMembrane,
+          bodyConditionScore:
+            dto.vitals?.bodyConditionScore !== undefined
+              ? dto.vitals.bodyConditionScore
+              : existing.bodyConditionScore,
+          veterinarianId:
+            dto.veterinarianId !== undefined ? dto.veterinarianId : existing.veterinarianId,
+          status: dto.status ?? existing.status,
+        },
       });
-    }
 
-    // 2. Update ClinicVisit record
-    const updated = await this.prisma.clinicVisit.update({
-      where: { id: visitId },
-      data: {
-        subjective: dto.subjective !== undefined ? dto.subjective : existing.subjective,
-        objective: dto.objective !== undefined ? dto.objective : existing.objective,
-        assessment: dto.assessment !== undefined ? dto.assessment : existing.assessment,
-        plan: dto.plan !== undefined ? dto.plan : existing.plan,
-        chiefComplaint:
-          dto.chiefComplaint !== undefined ? dto.chiefComplaint : existing.chiefComplaint,
-        symptoms: dto.symptoms !== undefined ? dto.symptoms : existing.symptoms,
-        diagnosis: dto.diagnosis !== undefined ? dto.diagnosis : existing.diagnosis,
-        differentialDiagnosis:
-          dto.differentialDiagnosis !== undefined
-            ? dto.differentialDiagnosis
-            : existing.differentialDiagnosis,
-        treatmentSummary:
-          dto.treatmentSummary !== undefined ? dto.treatmentSummary : existing.treatmentSummary,
-        dischargeNotes:
-          dto.dischargeNotes !== undefined ? dto.dischargeNotes : existing.dischargeNotes,
-        followUpDate:
-          dto.followUpDate !== undefined
-            ? dto.followUpDate
-              ? new Date(dto.followUpDate)
-              : null
-            : existing.followUpDate,
-        followUpReason:
-          dto.followUpReason !== undefined ? dto.followUpReason : existing.followUpReason,
-        weightKg: dto.vitals?.weightKg !== undefined ? dto.vitals.weightKg : existing.weightKg,
-        temperatureC:
-          dto.vitals?.temperatureC !== undefined
-            ? dto.vitals.temperatureC
-            : existing.temperatureC,
-        heartRateBpm:
-          dto.vitals?.heartRateBpm !== undefined
-            ? dto.vitals.heartRateBpm
-            : existing.heartRateBpm,
-        respiratoryRateBpm:
-          dto.vitals?.respiratoryRateBpm !== undefined
-            ? dto.vitals.respiratoryRateBpm
-            : existing.respiratoryRateBpm,
-        capillaryRefillTime:
-          dto.vitals?.capillaryRefillTime !== undefined
-            ? dto.vitals.capillaryRefillTime
-            : existing.capillaryRefillTime,
-        mucousMembrane:
-          dto.vitals?.mucousMembrane !== undefined
-            ? dto.vitals.mucousMembrane
-            : existing.mucousMembrane,
-        bodyConditionScore:
-          dto.vitals?.bodyConditionScore !== undefined
-            ? dto.vitals.bodyConditionScore
-            : existing.bodyConditionScore,
-        veterinarianId:
-          dto.veterinarianId !== undefined ? dto.veterinarianId : existing.veterinarianId,
-        status: dto.status ?? existing.status,
-      },
-    });
+      // 3. Create non-destructive append-only history record (PetMedicalRecord)
+      const snapshot = {
+        authorUserId: authorUserId || null,
+        authorName: authorName || 'สัตวแพทย์',
+        authorNote: dto.authorNote || 'บันทึก/ปรับปรุงข้อมูล SOAP Note',
+        savedAt: new Date().toISOString(),
+        subjective: updated.subjective,
+        objective: updated.objective,
+        assessment: updated.assessment,
+        plan: updated.plan,
+        diagnosis: updated.diagnosis,
+        vitals: {
+          weightKg: updated.weightKg ? Number(updated.weightKg) : null,
+          temperatureC: updated.temperatureC ? Number(updated.temperatureC) : null,
+          heartRateBpm: updated.heartRateBpm,
+          respiratoryRateBpm: updated.respiratoryRateBpm,
+        },
+      };
 
-    // 3. Create non-destructive append-only history record (PetMedicalRecord)
-    const snapshot = {
-      authorUserId: authorUserId || null,
-      authorName: authorName || 'สัตวแพทย์',
-      authorNote: dto.authorNote || 'บันทึก/ปรับปรุงข้อมูล SOAP Note',
-      savedAt: new Date().toISOString(),
-      subjective: updated.subjective,
-      objective: updated.objective,
-      assessment: updated.assessment,
-      plan: updated.plan,
-      diagnosis: updated.diagnosis,
-      vitals: {
-        weightKg: updated.weightKg ? Number(updated.weightKg) : null,
-        temperatureC: updated.temperatureC ? Number(updated.temperatureC) : null,
-        heartRateBpm: updated.heartRateBpm,
-        respiratoryRateBpm: updated.respiratoryRateBpm,
-      },
-    };
-
-    await this.prisma.petMedicalRecord.create({
-      data: {
-        petId: existing.petId,
-        clinicVisitId: visitId,
-        recordType: 'SOAP',
-        content: JSON.stringify(snapshot),
-      },
+      await tx.petMedicalRecord.create({
+        data: {
+          petId: existing.petId,
+          clinicVisitId: visitId,
+          recordType: 'SOAP',
+          content: JSON.stringify(snapshot),
+        },
+      });
     });
 
     return this.getSoapNoteByVisitId(tenantId, visitId);

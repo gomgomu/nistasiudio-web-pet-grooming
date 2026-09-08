@@ -199,9 +199,29 @@ export default function SoapWorkspacePage({ params }: { params: Promise<{ id: st
     ? `${(petWeight * parseFloat(newDosePerKg)).toFixed(1)} mg`
     : '-';
 
-  const handleSaveSoap = () => {
+  const handleSaveSoap = async () => {
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('petflow_token') : null;
+      await fetch(`/api/v1/clinical/visits/${data.visitId}/soap`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          subjective: data.subjective,
+          objective: data.objective,
+          assessment: data.assessment,
+          plan: data.plan,
+          diagnosis: data.diagnosis,
+          vitals: data.vitals,
+          authorNote: auditNote || 'บันทึก/ปรับปรุงข้อมูล SOAP Note',
+        }),
+      });
+    } catch (err) {
+      console.warn('Could not sync SOAP note to backend API:', err);
+    } finally {
       setIsSaving(false);
       setSaveSuccess(true);
       const newHistory = [
@@ -218,17 +238,32 @@ export default function SoapWorkspacePage({ params }: { params: Promise<{ id: st
       setData((prev) => ({ ...prev, historyEntries: newHistory }));
       setAuditNote('');
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 600);
+    }
   };
 
-  const handleCompleteVisit = () => {
+  const handleCompleteVisit = async () => {
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('petflow_token') : null;
+      await fetch(`/api/v1/clinical/visits/${data.visitId}/soap`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          status: 'COMPLETED',
+          authorNote: 'เสร็จสิ้นการตรวจรักษา',
+        }),
+      });
+    } catch (err) {
+      console.warn('Could not sync visit completion to backend API:', err);
+    } finally {
       setIsSaving(false);
       setData((prev) => ({ ...prev, status: 'COMPLETED' }));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 600);
+    }
   };
 
   const handleAddAttachment = () => {

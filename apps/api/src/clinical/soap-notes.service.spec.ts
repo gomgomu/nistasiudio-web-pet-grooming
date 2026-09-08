@@ -100,60 +100,63 @@ describe('SoapNotesService (SOAP Notes & Clinical Records API)', () => {
   };
 
   beforeEach(async () => {
+    const prismaMock: any = {
+      clinicVisit: {
+        findFirst: jest.fn().mockImplementation((args) => {
+          if (args.where.id === mockVisitId && args.where.tenantId === mockTenantId) {
+            return Promise.resolve(mockVisit);
+          }
+          return Promise.resolve(null);
+        }),
+        update: jest.fn().mockImplementation((args) => {
+          return Promise.resolve({
+            ...mockVisit,
+            ...args.data,
+          });
+        }),
+      },
+      pet: {
+        findFirst: jest.fn().mockImplementation((args) => {
+          if (args.where.id === mockPetId && args.where.tenantId === mockTenantId) {
+            return Promise.resolve({
+              ...mockPet,
+              clinicVisits: [mockVisit],
+              vaccinations: [],
+              medicalRecords: [mockMedicalRecord],
+            });
+          }
+          return Promise.resolve(null);
+        }),
+        update: jest.fn().mockResolvedValue(mockPet),
+      },
+      petMedicalRecord: {
+        create: jest.fn().mockResolvedValue(mockMedicalRecord),
+      },
+      clinicAttachment: {
+        create: jest.fn().mockResolvedValue(mockAttachment),
+        findMany: jest.fn().mockImplementation((args) => {
+          if (args.where.clinicVisitId === mockVisitId && args.where.tenantId === mockTenantId) {
+            return Promise.resolve([mockAttachment]);
+          }
+          return Promise.resolve([]);
+        }),
+        findFirst: jest.fn().mockImplementation((args) => {
+          if (args.where.id === mockAttachmentId && args.where.tenantId === mockTenantId) {
+            return Promise.resolve(mockAttachment);
+          }
+          return Promise.resolve(null);
+        }),
+        delete: jest.fn().mockResolvedValue(mockAttachment),
+      },
+    };
+    prismaMock.$transaction = jest.fn().mockImplementation(async (cb) => cb(prismaMock));
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SoapNotesService,
         {
           provide: PrismaService,
-          useValue: {
-            clinicVisit: {
-              findFirst: jest.fn().mockImplementation((args) => {
-                if (args.where.id === mockVisitId && args.where.tenantId === mockTenantId) {
-                  return Promise.resolve(mockVisit);
-                }
-                return Promise.resolve(null);
-              }),
-              update: jest.fn().mockImplementation((args) => {
-                return Promise.resolve({
-                  ...mockVisit,
-                  ...args.data,
-                });
-              }),
-            },
-            pet: {
-              findFirst: jest.fn().mockImplementation((args) => {
-                if (args.where.id === mockPetId && args.where.tenantId === mockTenantId) {
-                  return Promise.resolve({
-                    ...mockPet,
-                    clinicVisits: [mockVisit],
-                    vaccinations: [],
-                    medicalRecords: [mockMedicalRecord],
-                  });
-                }
-                return Promise.resolve(null);
-              }),
-              update: jest.fn().mockResolvedValue(mockPet),
-            },
-            petMedicalRecord: {
-              create: jest.fn().mockResolvedValue(mockMedicalRecord),
-            },
-            clinicAttachment: {
-              create: jest.fn().mockResolvedValue(mockAttachment),
-              findMany: jest.fn().mockImplementation((args) => {
-                if (args.where.clinicVisitId === mockVisitId && args.where.tenantId === mockTenantId) {
-                  return Promise.resolve([mockAttachment]);
-                }
-                return Promise.resolve([]);
-              }),
-              findFirst: jest.fn().mockImplementation((args) => {
-                if (args.where.id === mockAttachmentId && args.where.tenantId === mockTenantId) {
-                  return Promise.resolve(mockAttachment);
-                }
-                return Promise.resolve(null);
-              }),
-              delete: jest.fn().mockResolvedValue(mockAttachment),
-            },
-          },
+          useValue: prismaMock,
         },
       ],
     }).compile();

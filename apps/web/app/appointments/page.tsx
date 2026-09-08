@@ -228,6 +228,22 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<MockAppointment[]>(initialAppointments);
   const [selectedAppointment, setSelectedAppointment] = useState<MockAppointment | null>(null);
 
+  // Fetch persisted appointments from database
+  useEffect(() => {
+    fetch('/api/appointments')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.appointments && Array.isArray(data.appointments) && data.appointments.length > 0) {
+          setAppointments((prev) => {
+            const existingIds = new Set(data.appointments.map((a: any) => a.id));
+            const uniquePrev = prev.filter((p) => !existingIds.has(p.id));
+            return [...data.appointments, ...uniquePrev];
+          });
+        }
+      })
+      .catch((err) => console.warn('Could not fetch DB appointments:', err));
+  }, []);
+
   // Listen to newly created appointments from modal anywhere in the app
   useEffect(() => {
     const handleNewAppointment = (e: CustomEvent<CreatedAppointmentEventData>) => {

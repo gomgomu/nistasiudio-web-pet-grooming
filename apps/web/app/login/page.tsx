@@ -6,11 +6,13 @@ import {
   Shield,
   Sparkles,
   CheckCircle2,
+  AlertCircle,
   Mail,
   Lock,
   Scissors,
   Stethoscope,
   Crown,
+  Users,
   ArrowRight,
 } from 'lucide-react';
 import { Badge, Button } from '@petflow/ui';
@@ -46,7 +48,7 @@ const DEMO_ROLES: DemoRoleOption[] = [
     subtitle: 'PetFlow Platform HQ',
     email: 'admin@petflow.co',
     icon: Shield,
-    roleCode: 'SAAS_ADMIN',
+    roleCode: 'SUPER_ADMIN',
     colorClass: 'from-violet-600 to-purple-800',
     badgeText: 'ดูแลทุกร้าน, จัดการระบบกลาง',
     targetUrl: '/admin',
@@ -73,11 +75,22 @@ const DEMO_ROLES: DemoRoleOption[] = [
     badgeText: 'ตรวจรักษา OPD, ประวัติวัคซีน',
     targetUrl: '/clinical',
   },
+  {
+    id: 'receptionist',
+    title: 'พนักงานต้อนรับ',
+    subtitle: 'น้องขวัญ (Reception / POS)',
+    email: 'receptionist@demopetcare.com',
+    icon: Users,
+    roleCode: 'RECEPTIONIST',
+    colorClass: 'from-amber-600 to-orange-700',
+    badgeText: 'นัดหมาย, คิว, แคชเชียร์ POS',
+    targetUrl: '/appointments',
+  },
 ];
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginAs, setUser } = useAuth();
+  const { loginWithCredentials } = useAuth();
 
   const [email, setEmail] = useState('owner@demopetcare.com');
   const [password, setPassword] = useState('password123');
@@ -85,56 +98,47 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeRole, setActiveRole] = useState('owner');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSelectRole = (role: DemoRoleOption) => {
     setActiveRole(role.id);
     setEmail(role.email);
     setPassword('password123');
+    setErrorMessage(null);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
 
-    // 1. Check if email matches a preset role
-    const matchedPreset = DEMO_ROLES.find(
-      (r) => r.email.toLowerCase() === email.trim().toLowerCase()
-    );
+    const result = await loginWithCredentials(email, password);
 
-    let loggedInName = '';
-    let targetUrl = '/';
-
-    if (matchedPreset) {
-      const loggedUser = loginAs(matchedPreset.id, matchedPreset.id === 'admin' ? 'HQ' : 'MAIN');
-      loggedInName = `${loggedUser.name} (${loggedUser.roleTitle})`;
-      targetUrl = matchedPreset.targetUrl;
-    } else {
-      // Custom user / newly created store owner
-      const emailPrefix = email.split('@')[0];
-      const customUser = {
-        id: `u-${Date.now()}`,
-        email: email.trim(),
-        name: `คุณ ${emailPrefix}`,
-        role: 'TENANT_OWNER' as const,
-        roleTitle: 'เจ้าของร้าน (Owner)',
-        branchId: 'MAIN',
-        branchName: 'สาขาหลัก (Main Branch)',
-        avatarText: emailPrefix.charAt(0).toUpperCase(),
-        avatarGradient: 'from-blue-600 to-indigo-700',
-      };
-      setUser(customUser);
-      loggedInName = `${customUser.name} (เจ้าของร้าน)`;
-      targetUrl = '/';
+    if (!result.success || !result.user) {
+      setIsLoading(false);
+      setErrorMessage(result.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
+      return;
     }
 
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccessMessage(`ยินดีต้อนรับ ${loggedInName} เข้าสู่ระบบ`);
+    const loggedUser = result.user;
+    const loggedInName = `${loggedUser.name} (${loggedUser.roleTitle})`;
+    let targetUrl = '/';
+    if (loggedUser.role === 'SUPER_ADMIN' || loggedUser.role === 'SAAS_ADMIN') {
+      targetUrl = '/admin';
+    } else if (loggedUser.role === 'GROOMER') {
+      targetUrl = '/grooming/queue';
+    } else if (loggedUser.role === 'VETERINARIAN') {
+      targetUrl = '/clinical';
+    } else if (loggedUser.role === 'RECEPTIONIST') {
+      targetUrl = '/appointments';
+    }
 
-      setTimeout(() => {
-        router.push(targetUrl);
-      }, 600);
-    }, 400);
+    setIsLoading(false);
+    setSuccessMessage(`ยินดีต้อนรับ ${loggedInName} เข้าสู่ระบบ`);
+
+    setTimeout(() => {
+      router.push(targetUrl);
+    }, 600);
   };
 
   return (
@@ -171,11 +175,11 @@ export default function LoginPage() {
               เลือกล็อกอินตามบทบาท (1-Click Demo Login):
             </span>
             <Badge variant="default" className="text-[10px] bg-blue-500/20 text-blue-300">
-              4 บทบาทหลัก
+              5 บทบาทหลัก (รวม Receptionist)
             </Badge>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {DEMO_ROLES.map((role) => {
               const isSelected = activeRole === role.id && email === role.email;
               const IconComp = role.icon;
@@ -216,6 +220,13 @@ export default function LoginPage() {
 
         {/* Credentials Form Box */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-5">
+          {errorMessage ? (
+            <div className="p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center gap-3 text-sm animate-in fade-in zoom-in-95 duration-300">
+              <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />
+              <span>{errorMessage}</span>
+            </div>
+          ) : null}
+
           {successMessage ? (
             <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center gap-3 text-sm animate-in fade-in zoom-in-95 duration-300">
               <CheckCircle2 className="w-5 h-5 shrink-0" />

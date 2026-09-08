@@ -28,6 +28,7 @@ import { FindAvailableSlotsDto } from './dto/find-available-slots.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentTenant } from '../common/decorators/current-tenant.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../auth/auth.interface';
 
 @ApiTags('Appointments & Bookings')
 @ApiBearerAuth()
@@ -39,15 +40,23 @@ export class AppointmentsController {
     private readonly bookingConflictService: BookingConflictService
   ) {}
 
+  private getAllowedBranchIds(user: AuthenticatedUser): string[] {
+    if (['SUPER_ADMIN', 'TENANT_OWNER', 'TENANT_ADMIN'].includes(user.role)) {
+      return [];
+    }
+    return (user.allowedBranches || []).map((b) => b.id);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new appointment with automated conflict checking & pricing' })
   @ApiResponse({ status: 201, description: 'Appointment created successfully' })
   create(
     @CurrentTenant() tenantId: string,
-    @CurrentUser('id') currentUserId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateAppointmentDto
   ) {
-    return this.appointmentsService.create(tenantId, currentUserId, dto);
+    const allowedBranches = this.getAllowedBranchIds(user);
+    return this.appointmentsService.create(tenantId, user.id, dto, allowedBranches);
   }
 
   @Get()
@@ -55,9 +64,11 @@ export class AppointmentsController {
   @ApiResponse({ status: 200, description: 'Paginated list of appointments' })
   findAll(
     @CurrentTenant() tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Query() query: QueryAppointmentDto
   ) {
-    return this.appointmentsService.findAll(tenantId, query);
+    const allowedBranches = this.getAllowedBranchIds(user);
+    return this.appointmentsService.findAll(tenantId, query, allowedBranches);
   }
 
   @Post('check-conflicts')
@@ -86,9 +97,11 @@ export class AppointmentsController {
   @ApiResponse({ status: 200, description: 'Appointment details' })
   findById(
     @Param('id') id: string,
-    @CurrentTenant() tenantId: string
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() user: AuthenticatedUser
   ) {
-    return this.appointmentsService.findById(id, tenantId);
+    const allowedBranches = this.getAllowedBranchIds(user);
+    return this.appointmentsService.findById(id, tenantId, allowedBranches);
   }
 
   @Patch(':id')
@@ -97,9 +110,11 @@ export class AppointmentsController {
   update(
     @Param('id') id: string,
     @CurrentTenant() tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateAppointmentDto
   ) {
-    return this.appointmentsService.update(id, tenantId, dto);
+    const allowedBranches = this.getAllowedBranchIds(user);
+    return this.appointmentsService.update(id, tenantId, dto, allowedBranches);
   }
 
   @Patch(':id/status')
@@ -108,9 +123,11 @@ export class AppointmentsController {
   updateStatus(
     @Param('id') id: string,
     @CurrentTenant() tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateAppointmentStatusDto
   ) {
-    return this.appointmentsService.updateStatus(id, tenantId, dto);
+    const allowedBranches = this.getAllowedBranchIds(user);
+    return this.appointmentsService.updateStatus(id, tenantId, dto, allowedBranches);
   }
 
   @Delete(':id')
@@ -118,8 +135,10 @@ export class AppointmentsController {
   @ApiResponse({ status: 200, description: 'Appointment deleted successfully' })
   delete(
     @Param('id') id: string,
-    @CurrentTenant() tenantId: string
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() user: AuthenticatedUser
   ) {
-    return this.appointmentsService.delete(id, tenantId);
+    const allowedBranches = this.getAllowedBranchIds(user);
+    return this.appointmentsService.delete(id, tenantId, allowedBranches);
   }
 }

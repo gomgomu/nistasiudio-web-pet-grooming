@@ -171,18 +171,26 @@ export default function StaffManagementPage() {
   };
 
   const roleTitles: Record<UserRole, string> = {
+    SUPER_ADMIN: 'SaaS Super Admin HQ',
     TENANT_OWNER: 'เจ้าของร้าน (Owner)',
+    TENANT_ADMIN: 'ผู้ดูแลระบบร้าน (Admin)',
+    BRANCH_MANAGER: 'ผู้จัดการสาขา (Manager)',
     VETERINARIAN: 'สัตวแพทย์ (Doctor OPD)',
     GROOMER: 'ช่างกรูมมิ่ง (Groomer)',
     RECEPTIONIST: 'พนักงานต้อนรับ & แคชเชียร์',
+    STAFF: 'พนักงานทั่วไป (Staff)',
     SAAS_ADMIN: 'Super Admin HQ',
   };
 
   const gradients: Record<string, string> = {
+    SUPER_ADMIN: 'from-slate-800 to-slate-950',
+    TENANT_OWNER: 'from-blue-600 to-indigo-700',
+    TENANT_ADMIN: 'from-indigo-600 to-blue-800',
+    BRANCH_MANAGER: 'from-cyan-600 to-teal-700',
     VETERINARIAN: 'from-purple-600 to-pink-700',
     GROOMER: 'from-teal-600 to-emerald-700',
     RECEPTIONIST: 'from-amber-600 to-orange-700',
-    TENANT_OWNER: 'from-blue-600 to-indigo-700',
+    STAFF: 'from-slate-600 to-slate-700',
     SAAS_ADMIN: 'from-violet-600 to-purple-800',
   };
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import * as bcrypt from 'bcryptjs';
 
 const roleTitles: Record<string, string> = {
   TENANT_OWNER: 'เจ้าของร้าน (Owner)',
@@ -28,8 +29,15 @@ export async function GET(req: Request) {
       where: { slug: tenantSlug },
     });
 
+    if (!tenant) {
+      return NextResponse.json(
+        { status: 'error', message: 'Tenant not found' },
+        { status: 404 }
+      );
+    }
+
     const users = await prisma.user.findMany({
-      where: tenant ? { tenantId: tenant.id } : {},
+      where: { tenantId: tenant.id },
       include: {
         userBranches: {
           include: { branch: true },
@@ -82,13 +90,9 @@ export async function POST(req: Request) {
       tenantSlug = 'demo-pet-clinic',
     } = body;
 
-    let tenant = await prisma.tenant.findFirst({
+    const tenant = await prisma.tenant.findFirst({
       where: { slug: tenantSlug },
     });
-
-    if (!tenant) {
-      tenant = await prisma.tenant.findFirst();
-    }
 
     if (!tenant) {
       return NextResponse.json(
@@ -101,12 +105,14 @@ export async function POST(req: Request) {
     const firstName = nameParts[0] || 'Staff';
     const lastName = nameParts.slice(1).join(' ') || 'PetFlow';
 
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(body.password || 'password123', salt);
+
     const newUser = await prisma.user.create({
       data: {
         tenantId: tenant.id,
         email: email.trim().toLowerCase(),
-        passwordHash:
-          '$argon2id$v=19$m=65536,t=3,p=4$4iU6g2d1gR7M5Vn$X5v7n9mK8j3H2g1f0e9d8c7b6a5', // default hashed password123
+        passwordHash,
         firstName,
         lastName,
         phone,

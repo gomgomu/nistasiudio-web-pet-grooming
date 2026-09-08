@@ -47,13 +47,9 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { name, code, address, phone, tenantSlug = 'demo-pet-clinic' } = body;
 
-    let tenant = await prisma.tenant.findFirst({
+    const tenant = await prisma.tenant.findFirst({
       where: { slug: tenantSlug },
     });
-
-    if (!tenant) {
-      tenant = await prisma.tenant.findFirst();
-    }
 
     if (!tenant) {
       return NextResponse.json(

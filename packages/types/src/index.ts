@@ -2,6 +2,7 @@
 
 export type UserRole =
   | 'SUPER_ADMIN'
+  | 'SAAS_ADMIN'
   | 'TENANT_OWNER'
   | 'TENANT_ADMIN'
   | 'BRANCH_MANAGER'

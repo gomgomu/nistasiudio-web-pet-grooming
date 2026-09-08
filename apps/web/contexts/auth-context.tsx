@@ -3,11 +3,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'SAAS_ADMIN'
   | 'TENANT_OWNER'
-  | 'GROOMER'
+  | 'TENANT_ADMIN'
+  | 'BRANCH_MANAGER'
   | 'VETERINARIAN'
+  | 'GROOMER'
   | 'RECEPTIONIST'
-  | 'SAAS_ADMIN';
+  | 'STAFF';
 
 export interface AuthUserProfile {
   id: string;
@@ -19,6 +23,9 @@ export interface AuthUserProfile {
   branchName: string;
   avatarText?: string;
   avatarGradient?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  allowedBranches?: { id: string; name: string; code: string }[];
 }
 
 export const PRESET_USERS: Record<string, AuthUserProfile> = {
@@ -37,7 +44,7 @@ export const PRESET_USERS: Record<string, AuthUserProfile> = {
     id: 'u-admin-01',
     email: 'admin@petflow.co',
     name: 'PetFlow Super Admin (DEV)',
-    role: 'SAAS_ADMIN',
+    role: 'SUPER_ADMIN',
     roleTitle: 'Super Admin (DEV Platform HQ)',
     branchId: 'HQ',
     branchName: 'SaaS Headquarter',
@@ -66,6 +73,17 @@ export const PRESET_USERS: Record<string, AuthUserProfile> = {
     avatarText: 'น',
     avatarGradient: 'from-purple-500 to-pink-600',
   },
+  receptionist: {
+    id: 'u-reception-01',
+    email: 'receptionist@demopetcare.com',
+    name: 'ขวัญใจ บริการดี',
+    role: 'RECEPTIONIST',
+    roleTitle: 'พนักงานต้อนรับ & แคชเชียร์ (Receptionist)',
+    branchId: 'MAIN',
+    branchName: 'สาขาทองหล่อ (Main)',
+    avatarText: 'ข',
+    avatarGradient: 'from-amber-500 to-orange-600',
+  },
 };
 
 interface AuthContextType {
@@ -74,6 +92,11 @@ interface AuthContextType {
   isLoading: boolean;
   setUser: (user: AuthUserProfile | null) => void;
   loginAs: (roleId: string, branchId?: string) => AuthUserProfile;
+  loginWithCredentials: (
+    email: string,
+    password: string,
+    tenantSlug?: string
+  ) => Promise<{ success: boolean; message?: string; user?: AuthUserProfile }>;
   logout: () => void;
   isRole: (...roles: UserRole[]) => boolean;
 }
@@ -131,12 +154,99 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return newUser;
   };
 
+  const loginWithCredentials = async (
+    email: string,
+    password: string,
+    tenantSlug = 'demo-pet-clinic'
+  ): Promise<{ success: boolean; message?: string; user?: AuthUserProfile }> => {
+    const targetSlug = email.trim().toLowerCase().includes('@petflow.co')
+      ? 'petflow-hq'
+      : tenantSlug;
+
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND_URL || 'http://localhost:3001';
+      const response = await fetch(`${backendUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+          tenantSlug: targetSlug,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const authUser = data.user;
+        const tokens = data.tokens;
+
+        const roleTitles: Record<string, string> = {
+          SUPER_ADMIN: 'Super Admin (DEV Platform HQ)',
+          TENANT_OWNER: 'เจ้าของร้าน (Owner)',
+          TENANT_ADMIN: 'ผู้จัดการระบบร้าน (Admin)',
+          BRANCH_MANAGER: 'ผู้จัดการสาขา',
+          VETERINARIAN: 'สัตวแพทย์ (Doctor OPD)',
+          GROOMER: 'ช่างกรูมมิ่ง (Groomer)',
+          RECEPTIONIST: 'พนักงานต้อนรับ & แคชเชียร์',
+          STAFF: 'พนักงานทั่วไป',
+        };
+
+        const primaryBranch = authUser.allowedBranches?.[0];
+        const fullName = `${authUser.firstName} ${authUser.lastName}`.trim();
+
+        const profile: AuthUserProfile = {
+          id: authUser.id,
+          email: authUser.email,
+          name: fullName || authUser.email.split('@')[0],
+          role: authUser.role,
+          roleTitle: roleTitles[authUser.role] || authUser.role,
+          branchId: primaryBranch?.id || 'MAIN',
+          branchName: primaryBranch?.name || 'สาขาทองหล่อ (Main)',
+          avatarText: (fullName || authUser.email).charAt(0).toUpperCase(),
+          accessToken: tokens?.accessToken,
+          refreshToken: tokens?.refreshToken,
+          allowedBranches: authUser.allowedBranches,
+        };
+
+        setUser(profile);
+        return { success: true, user: profile };
+      }
+    } catch {
+      // Backend not running on localhost:3001 or network error -> check demo credentials
+    }
+
+    // Fallback authentication for offline demo presets
+    const matchedPresetKey = Object.keys(PRESET_USERS).find(
+      (k) => PRESET_USERS[k].email.toLowerCase() === email.trim().toLowerCase()
+    );
+
+    if (matchedPresetKey) {
+      if (password !== 'password123') {
+        return { success: false, message: 'รหัสผ่านไม่ถูกต้อง (รหัสผ่านเดโมคือ password123)' };
+      }
+      const loggedUser = loginAs(
+        matchedPresetKey,
+        matchedPresetKey === 'admin' ? 'HQ' : 'MAIN'
+      );
+      return { success: true, user: loggedUser };
+    }
+
+    return {
+      success: false,
+      message: 'ไม่พบผู้ใช้นี้ในระบบ หรือรหัสผ่านไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ',
+    };
+  };
+
   const logout = () => {
     setUser(null);
   };
 
   const isRole = (...roles: UserRole[]) => {
-    return user ? roles.includes(user.role) : false;
+    if (!user) return false;
+    // Map SAAS_ADMIN and SUPER_ADMIN interchangeably for UI checks
+    const current = user.role === 'SAAS_ADMIN' ? 'SUPER_ADMIN' : user.role;
+    const normalizedRoles = roles.map((r) => (r === 'SAAS_ADMIN' ? 'SUPER_ADMIN' : r));
+    return normalizedRoles.includes(current as any);
   };
 
   return (
@@ -147,6 +257,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: !isLoaded,
         setUser,
         loginAs,
+        loginWithCredentials,
         logout,
         isRole,
       }}

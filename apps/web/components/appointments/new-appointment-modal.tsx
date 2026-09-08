@@ -308,7 +308,7 @@ export function NewAppointmentModal() {
     return null;
   }, [bookingDate, selectedStaffId, bookingTime]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -329,11 +329,45 @@ export function NewAppointmentModal() {
         }
       : selectedPresetCustomer;
 
-    const startIso = `${bookingDate}T${bookingTime}:00.000Z`;
-    const endIso = `${bookingDate}T${calculatedEndTime}:00.000Z`;
+    // Convert local Asia/Bangkok time into ISO string correctly (UTC+7)
+    const startIso = new Date(`${bookingDate}T${bookingTime}:00+07:00`).toISOString();
+    const endIso = new Date(`${bookingDate}T${calculatedEndTime}:00+07:00`).toISOString();
+
+    let createdId = `apt-${Date.now()}`;
+
+    try {
+      const res = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: customerData.customerId.startsWith('c-new-') ? undefined : customerData.customerId,
+          petId: customerData.petId.startsWith('p-new-') ? undefined : customerData.petId,
+          customerName: customerData.customerName,
+          customerPhone: customerData.customerPhone,
+          customerLine: customerData.customerLine,
+          petName: customerData.petName,
+          petSpecies: customerData.petSpecies,
+          petBreed: customerData.petBreed,
+          petWeight: customerData.petWeight,
+          serviceId: activeService.id,
+          assignedStaffId: targetStaff.id === 'auto' ? undefined : targetStaff.id,
+          startAt: startIso,
+          endAt: endIso,
+          notes: notes || undefined,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.appointment?.id) {
+          createdId = json.appointment.id;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not persist appointment to API, falling back to local state:', err);
+    }
 
     const newAppointment: CreatedAppointmentEventData = {
-      id: `apt-${Date.now()}`,
+      id: createdId,
       customerId: customerData.customerId,
       customerName: customerData.customerName,
       customerPhone: customerData.customerPhone,
@@ -358,15 +392,13 @@ export function NewAppointmentModal() {
       source: source,
     };
 
+    notifyAppointmentCreated(newAppointment);
+    setIsSubmitting(false);
+    setSuccessMessage('🎉 บันทึกการจองนัดหมายสำเร็จ และเพิ่มลงในปฏิทินเรียบร้อยแล้ว!');
     setTimeout(() => {
-      notifyAppointmentCreated(newAppointment);
-      setIsSubmitting(false);
-      setSuccessMessage('🎉 บันทึกการจองนัดหมายสำเร็จ และเพิ่มลงในปฏิทินเรียบร้อยแล้ว!');
-      setTimeout(() => {
-        setSuccessMessage(null);
-        closeBookingModal();
-      }, 1200);
-    }, 400);
+      setSuccessMessage(null);
+      closeBookingModal();
+    }, 1200);
   };
 
   if (!isOpen) return null;

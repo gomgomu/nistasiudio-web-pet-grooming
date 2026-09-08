@@ -54,13 +54,46 @@ export default function NewCustomerPage() {
     setIsSubmitting(true);
 
     try {
-      // Simulate API registration delay
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const custRes = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          email: formData.email || undefined,
+          address: formData.address || undefined,
+          lineUserId: formData.lineUserId || undefined,
+          marketingStatus: formData.marketingConsent ? 'OPTED_IN' : 'OPTED_OUT',
+        }),
+      });
+
+      if (!custRes.ok) {
+        const errData = await custRes.json().catch(() => ({}));
+        throw new Error(errData.message || 'บันทึกลูกค้าไม่สำเร็จ');
+      }
+
+      const custData = await custRes.json();
+      const customerId = custData.customer?.id;
+
+      if (customerId && formData.petName.trim()) {
+        await fetch('/api/pets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId,
+            name: formData.petName,
+            species: formData.species,
+            breed: formData.breed || undefined,
+            gender: formData.sex,
+          }),
+        });
+      }
 
       // Redirect to customer list
       router.push('/customers');
-    } catch {
-      setErrorMessage('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsSubmitting(false);
     }

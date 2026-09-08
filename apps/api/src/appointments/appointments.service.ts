@@ -56,8 +56,14 @@ export class AppointmentsService {
   async create(
     tenantId: string,
     currentUserId: string,
-    dto: CreateAppointmentDto
+    dto: CreateAppointmentDto,
+    allowedBranches: string[] = []
   ) {
+    if (allowedBranches.length > 0 && !allowedBranches.includes(dto.branchId)) {
+      throw new ForbiddenException(
+        'Access denied: You do not have permission to book appointments for this branch'
+      );
+    }
     // 1. Verify Customer exists and belongs to tenant
     const customer = await this.prisma.customer.findUnique({
       where: { id: dto.customerId },
@@ -179,14 +185,28 @@ export class AppointmentsService {
   /**
    * Find all appointments with multi-criteria filters, search, and pagination
    */
-  async findAll(tenantId: string, query: QueryAppointmentDto) {
+  async findAll(
+    tenantId: string,
+    query: QueryAppointmentDto,
+    allowedBranches: string[] = []
+  ) {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
 
+    if (query.branchId && allowedBranches.length > 0 && !allowedBranches.includes(query.branchId)) {
+      throw new ForbiddenException(
+        'Access denied: You do not have permission to view appointments for this branch'
+      );
+    }
+
     const where: Prisma.AppointmentWhereInput = {
       tenantId,
-      branchId: query.branchId,
+      branchId: query.branchId
+        ? query.branchId
+        : allowedBranches.length > 0
+          ? { in: allowedBranches }
+          : undefined,
       staffId: query.staffId,
       customerId: query.customerId,
       petId: query.petId,
@@ -255,7 +275,7 @@ export class AppointmentsService {
   /**
    * Find single appointment by ID
    */
-  async findById(id: string, tenantId: string) {
+  async findById(id: string, tenantId: string, allowedBranches: string[] = []) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
       include: {
@@ -290,13 +310,24 @@ export class AppointmentsService {
       throw new ForbiddenException('Access denied: Appointment does not belong to your organization');
     }
 
+    if (allowedBranches.length > 0 && !allowedBranches.includes(appointment.branchId)) {
+      throw new ForbiddenException(
+        'Access denied: You do not have permission to view appointments for this branch'
+      );
+    }
+
     return this.serializeAppointment(appointment);
   }
 
   /**
    * Update appointment details with conflict re-validation
    */
-  async update(id: string, tenantId: string, dto: UpdateAppointmentDto) {
+  async update(
+    id: string,
+    tenantId: string,
+    dto: UpdateAppointmentDto,
+    allowedBranches: string[] = []
+  ) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
       include: { service: true },
@@ -308,6 +339,16 @@ export class AppointmentsService {
 
     if (appointment.tenantId !== tenantId) {
       throw new ForbiddenException('Access denied: Appointment does not belong to your organization');
+    }
+
+    if (
+      allowedBranches.length > 0 &&
+      (!allowedBranches.includes(appointment.branchId) ||
+        (dto.branchId && !allowedBranches.includes(dto.branchId)))
+    ) {
+      throw new ForbiddenException(
+        'Access denied: You do not have permission to modify appointments for this branch'
+      );
     }
 
     if (
@@ -381,7 +422,8 @@ export class AppointmentsService {
   async updateStatus(
     id: string,
     tenantId: string,
-    dto: UpdateAppointmentStatusDto
+    dto: UpdateAppointmentStatusDto,
+    allowedBranches: string[] = []
   ) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
@@ -393,6 +435,31 @@ export class AppointmentsService {
 
     if (appointment.tenantId !== tenantId) {
       throw new ForbiddenException('Access denied: Appointment does not belong to your organization');
+    }
+
+    if (allowedBranches.length > 0 && !allowedBranches.includes(appointment.branchId)) {
+      throw new ForbiddenException(
+        'Access denied: You do not have permission to update appointments for this branch'
+      );
+    }
+
+    const VALID_STATUS_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
+      PENDING: [AppointmentStatus.CONFIRMED, AppointmentStatus.CHECKED_IN, AppointmentStatus.CANCELLED],
+      CONFIRMED: [AppointmentStatus.CHECKED_IN, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+      CHECKED_IN: [AppointmentStatus.IN_PROGRESS, AppointmentStatus.CANCELLED],
+      IN_PROGRESS: [AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED],
+      COMPLETED: [],
+      CANCELLED: [],
+      NO_SHOW: [],
+    };
+
+    if (appointment.status !== dto.status) {
+      const allowed = VALID_STATUS_TRANSITIONS[appointment.status] || [];
+      if (!allowed.includes(dto.status)) {
+        throw new BadRequestException(
+          `Invalid status transition from '${appointment.status}' to '${dto.status}'`
+        );
+      }
     }
 
     const now = new Date();
@@ -436,7 +503,7 @@ export class AppointmentsService {
   /**
    * Delete an appointment (or prevent deletion if already completed)
    */
-  async delete(id: string, tenantId: string) {
+  async delete(id: string, tenantId: string, allowedBranches: string[] = []) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
     });
@@ -447,6 +514,12 @@ export class AppointmentsService {
 
     if (appointment.tenantId !== tenantId) {
       throw new ForbiddenException('Access denied: Appointment does not belong to your organization');
+    }
+
+    if (allowedBranches.length > 0 && !allowedBranches.includes(appointment.branchId)) {
+      throw new ForbiddenException(
+        'Access denied: You do not have permission to delete appointments for this branch'
+      );
     }
 
     if (appointment.status === AppointmentStatus.COMPLETED) {

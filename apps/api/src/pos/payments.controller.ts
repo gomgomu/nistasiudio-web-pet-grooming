@@ -17,13 +17,16 @@ import {
 import { PaymentsService } from './payments.service';
 import { RecordPaymentDto, QueryPaymentsDto } from './dto/record-payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/guards/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { CurrentTenant } from '../common/decorators/current-tenant.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/auth.interface';
 
 @ApiTags('Invoices & POS')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
@@ -36,6 +39,13 @@ export class PaymentsController {
   }
 
   @Post('invoices/:invoiceId/payments')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.TENANT_OWNER,
+    UserRole.TENANT_ADMIN,
+    UserRole.BRANCH_MANAGER,
+    UserRole.RECEPTIONIST
+  )
   @ApiOperation({
     summary: 'Record a payment for an invoice (Cash, PromptPay, Transfer, Card) and update status',
   })
@@ -89,6 +99,12 @@ export class PaymentsController {
   }
 
   @Delete('payments/:id')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.TENANT_OWNER,
+    UserRole.TENANT_ADMIN,
+    UserRole.BRANCH_MANAGER
+  )
   @ApiOperation({ summary: 'Void/reverse a payment transaction' })
   @ApiResponse({ status: 200, description: 'Payment reversed successfully' })
   voidPayment(

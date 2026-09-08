@@ -9,13 +9,6 @@ async function harmonizeUsers() {
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash('password123', salt);
 
-  // Remove legacy/receptionist user if exists
-  await prisma.userBranch.deleteMany({
-    where: { user: { email: 'reception@demopetcare.com' } },
-  });
-  await prisma.user.deleteMany({
-    where: { email: 'reception@demopetcare.com' },
-  });
 
   // Ensure Demo Tenant & Branch exist
   const demoTenant = await prisma.tenant.upsert({
@@ -150,7 +143,46 @@ async function harmonizeUsers() {
     },
   });
 
-  // 4. Platform Super Admin (DEV)
+  // 4. Receptionist
+  const receptionist = await prisma.user.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: demoTenant.id,
+        email: 'receptionist@demopetcare.com',
+      },
+    },
+    update: {
+      firstName: 'ขวัญใจ',
+      lastName: 'บริการดี',
+      passwordHash,
+      role: UserRole.RECEPTIONIST,
+    },
+    create: {
+      tenantId: demoTenant.id,
+      email: 'receptionist@demopetcare.com',
+      passwordHash,
+      firstName: 'ขวัญใจ',
+      lastName: 'บริการดี',
+      role: UserRole.RECEPTIONIST,
+      phone: '085-678-9012',
+      userBranches: { create: { branchId: demoBranch.id } },
+    },
+  });
+
+  await prisma.staffProfile.upsert({
+    where: { userId: receptionist.id },
+    update: { nickname: 'น้องขวัญ' },
+    create: {
+      tenantId: demoTenant.id,
+      userId: receptionist.id,
+      nickname: 'น้องขวัญ',
+      staffType: 'RECEPTIONIST',
+      colorCode: '#F59E0B',
+      isBookable: false,
+    },
+  });
+
+  // 5. Platform Super Admin (DEV)
   const hqTenant = await prisma.tenant.upsert({
     where: { slug: 'petflow-hq' },
     update: {},

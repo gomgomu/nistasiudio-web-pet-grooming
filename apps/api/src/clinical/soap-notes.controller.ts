@@ -17,6 +17,8 @@ import { AddClinicAttachmentDto } from './dto/add-clinic-attachment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CurrentTenant } from '../common/decorators/current-tenant.decorator';
+import { Roles } from '../common/guards/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('Veterinary SOAP Notes & Medical History')
 @ApiBearerAuth()
@@ -37,6 +39,7 @@ export class SoapNotesController {
   }
 
   @Put('visits/:visitId/soap')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Save/Update SOAP note and create immutable audit snapshot' })
   @ApiParam({ name: 'visitId', description: 'Clinic Visit UUID' })
   @ApiResponse({ status: 200, description: 'Updated SOAP note dataset' })
@@ -52,6 +55,7 @@ export class SoapNotesController {
   }
 
   @Patch('visits/:visitId/soap')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Patch SOAP note and create immutable audit snapshot' })
   @ApiParam({ name: 'visitId', description: 'Clinic Visit UUID' })
   @ApiResponse({ status: 200, description: 'Updated SOAP note dataset' })
@@ -78,6 +82,7 @@ export class SoapNotesController {
   }
 
   @Post('visits/:visitId/attachments')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Attach clinical photo / document to a visit' })
   @ApiParam({ name: 'visitId', description: 'Clinic Visit UUID' })
   @ApiResponse({ status: 201, description: 'Attachment created' })
@@ -101,6 +106,7 @@ export class SoapNotesController {
   }
 
   @Delete('attachments/:attachmentId')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Delete clinical attachment' })
   @ApiParam({ name: 'attachmentId', description: 'Attachment UUID' })
   @ApiResponse({ status: 200, description: 'Attachment deleted' })

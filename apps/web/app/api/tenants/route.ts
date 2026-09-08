@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import * as bcrypt from 'bcryptjs';
 
 export async function GET() {
   try {
@@ -101,12 +102,14 @@ export async function POST(req: Request) {
 
       // 3. Create Tenant Owner User
       const nameParts = (ownerName || 'Owner').trim().split(' ');
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(password || 'password123', salt);
+
       const ownerUser = await tx.user.create({
         data: {
           tenantId: tenant.id,
           email: (ownerEmail || email).trim().toLowerCase(),
-          passwordHash:
-            '$argon2id$v=19$m=65536,t=3,p=4$4iU6g2d1gR7M5Vn$X5v7n9mK8j3H2g1f0e9d8c7b6a5', // default hashed password123
+          passwordHash,
           firstName: nameParts[0] || 'Owner',
           lastName: nameParts.slice(1).join(' ') || 'Admin',
           role: 'TENANT_OWNER',

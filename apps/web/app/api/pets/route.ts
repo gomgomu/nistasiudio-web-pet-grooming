@@ -10,8 +10,15 @@ export async function GET(req: Request) {
       where: { slug: tenantSlug },
     });
 
+    if (!tenant) {
+      return NextResponse.json(
+        { status: 'error', message: 'Tenant not found' },
+        { status: 404 }
+      );
+    }
+
     const pets = await prisma.pet.findMany({
-      where: tenant ? { tenantId: tenant.id } : {},
+      where: { tenantId: tenant.id },
       include: {
         customer: true,
       },
@@ -55,13 +62,9 @@ export async function POST(req: Request) {
       tenantSlug = 'demo-pet-clinic',
     } = body;
 
-    let tenant = await prisma.tenant.findFirst({
+    const tenant = await prisma.tenant.findFirst({
       where: { slug: tenantSlug },
     });
-
-    if (!tenant) {
-      tenant = await prisma.tenant.findFirst();
-    }
 
     if (!tenant) {
       return NextResponse.json(
@@ -70,25 +73,28 @@ export async function POST(req: Request) {
       );
     }
 
-    let targetCustomerId = customerId;
-    if (!targetCustomerId) {
-      const firstCustomer = await prisma.customer.findFirst({
-        where: { tenantId: tenant.id },
-      });
-      targetCustomerId = firstCustomer?.id;
+    if (!customerId) {
+      return NextResponse.json(
+        { status: 'error', message: 'Customer ID is required' },
+        { status: 400 }
+      );
     }
 
-    if (!targetCustomerId) {
+    const targetCustomer = await prisma.customer.findFirst({
+      where: { id: customerId, tenantId: tenant.id },
+    });
+
+    if (!targetCustomer) {
       return NextResponse.json(
-        { status: 'error', message: 'Customer not found' },
-        { status: 400 }
+        { status: 'error', message: 'Customer not found in this organization' },
+        { status: 404 }
       );
     }
 
     const newPet = await prisma.pet.create({
       data: {
         tenantId: tenant.id,
-        customerId: targetCustomerId,
+        customerId: targetCustomer.id,
         name,
         species: species as any,
         breed,

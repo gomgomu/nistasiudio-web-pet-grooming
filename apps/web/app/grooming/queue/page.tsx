@@ -457,8 +457,46 @@ export default function GroomingQueueBoardPage() {
     }, 4000);
   };
 
+  // Load grooming queue from database
+  React.useEffect(() => {
+    fetch('/api/grooming')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.queue && Array.isArray(data.queue) && data.queue.length > 0) {
+          const mappedDbItems: GroomingCardItem[] = data.queue.map((q: any) => ({
+            id: q.id,
+            queueNumber: q.queueNumber,
+            queueCode: `Q0${q.queueNumber}`,
+            customerId: `c-${q.id}`,
+            customerName: q.customerName,
+            customerPhone: q.customerPhone,
+            petId: `p-${q.id}`,
+            petName: q.petName,
+            petSpecies: q.species === 'CAT' ? 'CAT' : 'DOG',
+            petBreed: q.breed || 'พันธุ์ผสม',
+            petWeight: 4.0,
+            serviceId: 's-01',
+            serviceName: 'กรูมมิ่งมาตรฐาน',
+            groomerName: q.groomerName,
+            status: q.status as GroomingStage,
+            specialCareNotes: q.specialInstructions,
+            estimatedDurationMinutes: q.estimatedDurationMinutes || 60,
+            priceMinor: 50000,
+            checkInTime: new Date(q.checkInTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+          }));
+
+          setQueueItems((prev) => {
+            const dbIds = new Set(mappedDbItems.map((i) => i.id));
+            const uniquePrev = prev.filter((p) => !dbIds.has(p.id));
+            return [...mappedDbItems, ...uniquePrev];
+          });
+        }
+      })
+      .catch((err) => console.warn('Could not fetch DB grooming queue:', err));
+  }, []);
+
   // Stage Advancement Handler
-  const advanceStage = (id: string, targetStage: GroomingStage) => {
+  const advanceStage = async (id: string, targetStage: GroomingStage) => {
     setQueueItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -487,6 +525,17 @@ export default function GroomingQueueBoardPage() {
       }
       showToast('🎉 กรูมมิ่งเสร็จแล้ว! ระบบเปิดพรีวิวข้อความแจ้งเตือน LINE พร้อมส่งหาลูกค้า');
     }
+
+    // Persist status change to API
+    try {
+      await fetch('/api/grooming', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: targetStage }),
+      });
+    } catch (err) {
+      console.warn('Could not sync status change to API:', err);
+    }
   };
 
   // Send LINE Pickup Reminder
@@ -495,15 +544,41 @@ export default function GroomingQueueBoardPage() {
   };
 
   // Submit New Check-In
-  const handleCheckInSubmit = (e: React.FormEvent) => {
+  const handleCheckInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPetName || !newCustomerName || !newCustomerPhone) return;
 
     const nextNumber = queueItems.length + 1;
     const nextCode = `Q0${nextNumber}`;
+    let createdId = `q-${Date.now()}`;
+
+    try {
+      const res = await fetch('/api/grooming', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          petName: newPetName,
+          customerName: newCustomerName,
+          customerPhone: newCustomerPhone,
+          species: newPetSpecies,
+          breed: newPetBreed || undefined,
+          weight: newPetWeight,
+          specialCareNotes: newSpecialNotes,
+          estimatedDurationMinutes: 75,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.item?.id) {
+          createdId = json.item.id;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not persist check-in to API, using local state:', err);
+    }
 
     const newItem: GroomingCardItem = {
-      id: `q-${Date.now()}`,
+      id: createdId,
       queueNumber: nextNumber,
       queueCode: nextCode,
       customerId: `c-${Date.now()}`,

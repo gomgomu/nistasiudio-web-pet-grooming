@@ -35,10 +35,12 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    // Tenant Owner has access to all tenant-scoped roles (Owner, Admin, Manager, Staff, etc.)
+    // Tenant Owner has access to general tenant-scoped operations, but clinical medical records
+    // require explicit VETERINARIAN role as documented in veterinary workflow standards.
     if (
       user.role === UserRole.TENANT_OWNER &&
-      !requiredRoles.includes(UserRole.SUPER_ADMIN)
+      !requiredRoles.includes(UserRole.SUPER_ADMIN) &&
+      !requiredRoles.includes(UserRole.VETERINARIAN)
     ) {
       return true;
     }

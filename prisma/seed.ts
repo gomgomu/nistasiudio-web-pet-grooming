@@ -193,7 +193,46 @@ async function main() {
     },
   });
 
+  const receptionistUser = await prisma.user.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: tenant.id,
+        email: 'receptionist@demopetcare.com',
+      },
+    },
+    update: { passwordHash: commonPasswordHash },
+    create: {
+      tenantId: tenant.id,
+      email: 'receptionist@demopetcare.com',
+      passwordHash: commonPasswordHash,
+      firstName: 'ขวัญใจ',
+      lastName: 'บริการดี (ต้อนรับ/แคชเชียร์)',
+      role: UserRole.RECEPTIONIST,
+      status: UserStatus.ACTIVE,
+      phone: '085-678-9012',
+      userBranches: {
+        create: {
+          branchId: branch.id,
+        },
+      },
+    },
+  });
+
   // Staff Profiles
+  await prisma.staffProfile.upsert({
+    where: { userId: receptionistUser.id },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      userId: receptionistUser.id,
+      nickname: 'น้องขวัญ',
+      staffType: StaffType.RECEPTIONIST,
+      specialties: ['ต้อนรับลูกค้า', 'ระบบนัดหมาย', 'แคชเชียร์ POS'],
+      colorCode: '#F59E0B',
+      isBookable: false,
+    },
+  });
+
   await prisma.staffProfile.upsert({
     where: { userId: groomerUser.id },
     update: {},

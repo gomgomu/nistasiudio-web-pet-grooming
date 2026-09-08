@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RecordPaymentDto, QueryPaymentsDto } from './dto/record-payment.dto';
@@ -22,62 +23,62 @@ export class PaymentsService {
     userId: string,
     dto: RecordPaymentDto
   ) {
-    // 1. Verify invoice exists & belongs to tenant & allowed branches
-    const invoice = await this.prisma.invoice.findFirst({
-      where: {
-        id: invoiceId,
-        tenantId,
-        branchId: allowedBranches.length > 0 ? { in: allowedBranches } : undefined,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Verify invoice exists & belongs to tenant & allowed branches (inside transaction to prevent race conditions)
+      const invoice = await tx.invoice.findFirst({
+        where: {
+          id: invoiceId,
+          tenantId,
+          branchId: allowedBranches.length > 0 ? { in: allowedBranches } : undefined,
+        },
+      });
 
-    if (!invoice) {
-      throw new NotFoundException('Invoice not found');
-    }
+      if (!invoice) {
+        throw new NotFoundException('Invoice not found');
+      }
 
-    if (invoice.status === 'VOID') {
-      throw new BadRequestException('Cannot record payment for a voided invoice');
-    }
+      if (invoice.status === 'VOID') {
+        throw new BadRequestException('Cannot record payment for a voided invoice');
+      }
 
-    if (invoice.status === 'PAID') {
-      throw new BadRequestException('Invoice is already fully paid');
-    }
+      if (invoice.status === 'PAID') {
+        throw new BadRequestException('Invoice is already fully paid');
+      }
 
-    if (invoice.status === 'DRAFT') {
-      throw new BadRequestException(
-        'Cannot record payment for a draft invoice. Please issue the invoice first.'
-      );
-    }
-
-    const paymentAmount = BigInt(dto.amountMinor);
-    const remainingMinor = invoice.totalMinor - invoice.paidAmountMinor;
-
-    if (paymentAmount > remainingMinor) {
-      throw new BadRequestException(
-        `Payment amount (${(Number(paymentAmount) / 100).toFixed(
-          2
-        )} THB) exceeds remaining balance (${(Number(remainingMinor) / 100).toFixed(2)} THB)`
-      );
-    }
-
-    // 2. Calculate cash change if tender provided
-    let changeMinor: bigint | null = null;
-    let receivedAmountMinor: bigint | null = null;
-
-    if (dto.method === 'CASH' && dto.receivedAmountMinor !== undefined && dto.receivedAmountMinor !== null) {
-      receivedAmountMinor = BigInt(dto.receivedAmountMinor);
-      if (receivedAmountMinor < paymentAmount) {
+      if (invoice.status === 'DRAFT') {
         throw new BadRequestException(
-          'Received amount (cash tendered) cannot be less than payment amount'
+          'Cannot record payment for a draft invoice. Please issue the invoice first.'
         );
       }
-      changeMinor = receivedAmountMinor - paymentAmount;
-    }
 
-    const paidAt = dto.paidAt ? new Date(dto.paidAt) : new Date();
+      const paymentAmount = BigInt(dto.amountMinor);
+      const remainingMinor = invoice.totalMinor - invoice.paidAmountMinor;
 
-    // 3. Execute payment and invoice status transition in a transaction
-    return this.prisma.$transaction(async (tx) => {
+      if (paymentAmount > remainingMinor) {
+        throw new BadRequestException(
+          `Payment amount (${(Number(paymentAmount) / 100).toFixed(
+            2
+          )} THB) exceeds remaining balance (${(Number(remainingMinor) / 100).toFixed(2)} THB)`
+        );
+      }
+
+      // 2. Calculate cash change if tender provided
+      let changeMinor: bigint | null = null;
+      let receivedAmountMinor: bigint | null = null;
+
+      if (dto.method === 'CASH' && dto.receivedAmountMinor !== undefined && dto.receivedAmountMinor !== null) {
+        receivedAmountMinor = BigInt(dto.receivedAmountMinor);
+        if (receivedAmountMinor < paymentAmount) {
+          throw new BadRequestException(
+            'Received amount (cash tendered) cannot be less than payment amount'
+          );
+        }
+        changeMinor = receivedAmountMinor - paymentAmount;
+      }
+
+      const paidAt = dto.paidAt ? new Date(dto.paidAt) : new Date();
+
+      // 3. Execute payment and invoice status transition in transaction
       const payment = await tx.payment.create({
         data: {
           tenantId,
@@ -169,6 +170,10 @@ export class PaymentsService {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
+
+    if (query.branchId && allowedBranches.length > 0 && !allowedBranches.includes(query.branchId)) {
+      throw new ForbiddenException('Access denied: You do not have permission to view payments for this branch');
+    }
 
     const where: Prisma.PaymentWhereInput = {
       tenantId,

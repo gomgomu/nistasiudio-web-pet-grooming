@@ -99,8 +99,27 @@ const INITIAL_CUSTOMERS: MockCustomer[] = [
 export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState<string>('ALL');
+  const [customers, setCustomers] = useState<MockCustomer[]>(INITIAL_CUSTOMERS);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const filteredCustomers = INITIAL_CUSTOMERS.filter((customer) => {
+  React.useEffect(() => {
+    setIsLoading(true);
+    fetch('/api/customers')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.customers && Array.isArray(data.customers) && data.customers.length > 0) {
+          setCustomers((prev) => {
+            const dbIds = new Set(data.customers.map((c: any) => c.id));
+            const uniquePrev = prev.filter((p) => !dbIds.has(p.id));
+            return [...data.customers, ...uniquePrev];
+          });
+        }
+      })
+      .catch((err) => console.warn('Could not fetch DB customers:', err))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
       customer.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
