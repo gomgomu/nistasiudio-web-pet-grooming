@@ -60,6 +60,10 @@ export async function POST(req: Request) {
       weightKg,
       customerId,
       tenantSlug = 'demo-pet-clinic',
+      birthDate,
+      allergies,
+      behavioralNotes,
+      specialRequirements,
     } = body;
 
     const tenant = await prisma.tenant.findFirst({
@@ -100,6 +104,10 @@ export async function POST(req: Request) {
         breed,
         sex: (gender === 'MALE' ? 'MALE' : gender === 'FEMALE' ? 'FEMALE' : 'UNKNOWN') as any,
         weight: weightKg ? parseFloat(weightKg) : null,
+        birthDate: birthDate ? new Date(birthDate) : null,
+        allergies: allergies || null,
+        behavioralNotes: behavioralNotes || null,
+        specialRequirements: specialRequirements || null,
       },
       include: {
         customer: true,

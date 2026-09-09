@@ -497,6 +497,9 @@ export default function GroomingQueueBoardPage() {
 
   // Stage Advancement Handler
   const advanceStage = async (id: string, targetStage: GroomingStage) => {
+    const prevItem = queueItems.find((i) => i.id === id);
+    const prevStage = prevItem?.status || 'WAITING';
+
     setQueueItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -526,15 +529,26 @@ export default function GroomingQueueBoardPage() {
       showToast('🎉 กรูมมิ่งเสร็จแล้ว! ระบบเปิดพรีวิวข้อความแจ้งเตือน LINE พร้อมส่งหาลูกค้า');
     }
 
-    // Persist status change to API
+    // Persist status change to API with rollback on failure
     try {
-      await fetch('/api/grooming', {
+      const res = await fetch('/api/grooming', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: targetStage }),
       });
+      if (!res.ok) {
+        throw new Error('ไม่สามารถบันทึกสถานะได้');
+      }
     } catch (err) {
       console.warn('Could not sync status change to API:', err);
+      // Rollback local state
+      setQueueItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, status: prevStage } : item))
+      );
+      if (selectedItem && selectedItem.id === id) {
+        setSelectedItem((prev) => (prev ? { ...prev, status: prevStage } : null));
+      }
+      showToast('❌ ไม่สามารถเปลี่ยนสถานะคิวได้ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -563,15 +577,19 @@ export default function GroomingQueueBoardPage() {
           species: newPetSpecies,
           breed: newPetBreed || undefined,
           weight: newPetWeight,
+          serviceName: newServiceName,
+          groomerName: newGroomerName,
           specialCareNotes: newSpecialNotes,
           estimatedDurationMinutes: 75,
         }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.item?.id) {
-          createdId = json.item.id;
-        }
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'เช็คอินไม่สำเร็จ');
+      }
+      const json = await res.json();
+      if (json.item?.id) {
+        createdId = json.item.id;
       }
     } catch (err) {
       console.warn('Could not persist check-in to API, using local state:', err);

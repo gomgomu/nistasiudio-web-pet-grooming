@@ -129,8 +129,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (newUser) {
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
+        if (newUser.accessToken) {
+          localStorage.setItem('petflow_token', newUser.accessToken);
+        }
       } else {
         localStorage.removeItem(AUTH_STORAGE_KEY);
+        localStorage.removeItem('petflow_token');
       }
     } catch {}
   };
@@ -176,9 +180,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        const authUser = data.user;
-        const tokens = data.tokens;
+        const rawJson = await response.json();
+        const payload = rawJson?.data || rawJson;
+        const authUser = payload?.user || rawJson?.user;
+        const tokens = payload?.tokens || rawJson?.tokens;
+
+        if (!authUser) {
+          return {
+            success: false,
+            message: 'รูปแบบข้อมูลผู้ใช้จากเซิร์ฟเวอร์ไม่ถูกต้อง',
+          };
+        }
 
         const roleTitles: Record<string, string> = {
           SUPER_ADMIN: 'Super Admin (DEV Platform HQ)',
@@ -192,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         const primaryBranch = authUser.allowedBranches?.[0];
-        const fullName = `${authUser.firstName} ${authUser.lastName}`.trim();
+        const fullName = `${authUser.firstName || ''} ${authUser.lastName || ''}`.trim();
 
         const profile: AuthUserProfile = {
           id: authUser.id,
@@ -210,9 +222,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUser(profile);
         return { success: true, user: profile };
+      } else {
+        // Server responded with non-2xx status code (e.g. 401, 403, 500) -> fail closed
+        const err = await response.json().catch(() => ({}));
+        return {
+          success: false,
+          message: err?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง',
+        };
       }
     } catch {
-      // Backend not running on localhost:3001 or network error -> check demo credentials
+      // Backend unreachable or offline network error -> fallback to demo credentials
     }
 
     // Fallback authentication for offline demo presets

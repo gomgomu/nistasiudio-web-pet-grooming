@@ -16,6 +16,8 @@ import { UpdateClinicVisitDto } from './dto/update-clinic-visit.dto';
 import { QueryClinicVisitsDto } from './dto/query-clinic-visits.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/guards/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { CurrentTenant } from '../common/decorators/current-tenant.decorator';
 import { ClinicVisitStatus } from '@petflow/types';
 
@@ -58,6 +60,7 @@ export class ClinicVisitsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Update clinic visit vitals, SOAP notes, diagnosis or status' })
   @ApiParam({ name: 'id', description: 'Clinic Visit UUID' })
   @ApiResponse({ status: 200, description: 'Clinic visit updated successfully' })
@@ -82,6 +85,7 @@ export class ClinicVisitsController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.TENANT_OWNER, UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete clinic visit' })
   @ApiParam({ name: 'id', description: 'Clinic Visit UUID' })
   @ApiResponse({ status: 200, description: 'Clinic visit deleted' })

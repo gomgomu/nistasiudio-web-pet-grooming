@@ -245,6 +245,17 @@ export function NewAppointmentModal() {
       if (prefill.staffId) setSelectedStaffId(prefill.staffId);
       if (prefill.serviceId) setSelectedServiceId(prefill.serviceId);
       if (prefill.mode) setBookingMode(prefill.mode);
+      if (prefill.customerId || prefill.petId) {
+        const foundIndex = PRESET_CUSTOMERS.findIndex(
+          (c) =>
+            (prefill.customerId && c.customerId === prefill.customerId) ||
+            (prefill.petId && c.petId === prefill.petId)
+        );
+        if (foundIndex !== -1) {
+          setSelectedCustomerIndex(foundIndex);
+          setIsNewCustomer(false);
+        }
+      }
     }
   }, [prefill]);
 
@@ -356,14 +367,18 @@ export function NewAppointmentModal() {
           notes: notes || undefined,
         }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.appointment?.id) {
-          createdId = json.appointment.id;
-        }
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'บันทึกนัดหมายไม่สำเร็จ');
+      }
+      const json = await res.json();
+      if (json.appointment?.id) {
+        createdId = json.appointment.id;
       }
     } catch (err) {
-      console.warn('Could not persist appointment to API, falling back to local state:', err);
+      console.warn('Could not persist appointment to API:', err);
+      setIsSubmitting(false);
+      return;
     }
 
     const newAppointment: CreatedAppointmentEventData = {

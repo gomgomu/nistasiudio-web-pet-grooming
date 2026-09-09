@@ -76,8 +76,8 @@ export default function NewCustomerPage() {
       const custData = await custRes.json();
       const customerId = custData.customer?.id;
 
-      if (customerId && formData.petName.trim()) {
-        await fetch('/api/pets', {
+      if (customerId && includePet && formData.petName.trim()) {
+        const petRes = await fetch('/api/pets', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -86,8 +86,17 @@ export default function NewCustomerPage() {
             species: formData.species,
             breed: formData.breed || undefined,
             gender: formData.sex,
+            birthDate: formData.birthDate || undefined,
+            allergies: formData.allergies || undefined,
+            behavioralNotes: formData.behavioralNotes || undefined,
+            notes: formData.notes || undefined,
           }),
         });
+
+        if (!petRes.ok) {
+          const petErr = await petRes.json().catch(() => ({}));
+          throw new Error(`บันทึกลูกค้าสำเร็จ แต่เพิ่มสัตว์เลี้ยงไม่สำเร็จ: ${petErr.message || 'เกิดข้อผิดพลาดในการบันทึกสัตว์เลี้ยง'}`);
+        }
       }
 
       // Redirect to customer list

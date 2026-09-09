@@ -16,6 +16,8 @@ import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
 import { DispensePrescriptionsDto } from './dto/dispense-prescriptions.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/guards/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { CurrentTenant } from '../common/decorators/current-tenant.decorator';
 
 @ApiTags('Veterinary Prescriptions & Dispensing')
@@ -37,6 +39,7 @@ export class PrescriptionsController {
   }
 
   @Post('visits/:visitId/prescriptions')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Create a new prescription for a clinic visit' })
   @ApiParam({ name: 'visitId', description: 'Clinic Visit UUID' })
   @ApiResponse({ status: 201, description: 'Prescription created' })
@@ -49,6 +52,7 @@ export class PrescriptionsController {
   }
 
   @Patch('prescriptions/:id')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Update prescription details' })
   @ApiParam({ name: 'id', description: 'Prescription UUID' })
   @ApiResponse({ status: 200, description: 'Prescription updated' })
@@ -61,6 +65,7 @@ export class PrescriptionsController {
   }
 
   @Delete('prescriptions/:id')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Delete prescription' })
   @ApiParam({ name: 'id', description: 'Prescription UUID' })
   @ApiResponse({ status: 200, description: 'Prescription deleted' })

@@ -23,6 +23,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { Button, Badge } from '@petflow/ui';
+import { useAuth } from '../../contexts/auth-context';
 
 export type ServiceCategory = 'GROOMING' | 'CLINIC' | 'VACCINE' | 'SPA';
 
@@ -130,6 +131,9 @@ const INITIAL_SERVICES: ServiceItem[] = [
 ];
 
 export default function ServicesPricingPage() {
+  const { user } = useAuth();
+  const canManageServices = !user || user.role === 'TENANT_OWNER' || user.role === 'TENANT_ADMIN' || user.role === 'BRANCH_MANAGER' || user.role === 'SUPER_ADMIN';
+
   const [services, setServices] = useState<ServiceItem[]>(INITIAL_SERVICES);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedSpecies, setSelectedSpecies] = useState<string>('ALL');
@@ -196,7 +200,8 @@ export default function ServicesPricingPage() {
 
     const priceMinor = Math.round((parseFloat(formPrice) || 0) * 100);
     const durationMinutes = parseInt(formDuration, 10) || 60;
-    const commissionRate = parseFloat(formCommission) || 10;
+    const parsedComm = parseFloat(formCommission);
+    const commissionRate = isNaN(parsedComm) ? 10 : parsedComm;
 
     if (editingService) {
       setServices((prev) =>
@@ -304,12 +309,14 @@ export default function ServicesPricingPage() {
           </p>
         </div>
 
-        <Button
-          onClick={handleOpenAddModal}
-          className="inline-flex items-center gap-2 bg-[#0071e3] hover:bg-[#0077ed] text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-apple transition active:scale-[0.98]"
-        >
-          <Plus className="w-4 h-4" /> เพิ่มบริการใหม่
-        </Button>
+        {canManageServices && (
+          <Button
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center gap-2 bg-[#0071e3] hover:bg-[#0077ed] text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-apple transition active:scale-[0.98]"
+          >
+            <Plus className="w-4 h-4" /> เพิ่มบริการใหม่
+          </Button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
@@ -439,22 +446,24 @@ export default function ServicesPricingPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleOpenEditModal(service)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                  title="แก้ไข"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDeleteService(service.id, service.name)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                  title="ลบ"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+              {canManageServices && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleOpenEditModal(service)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    title="แก้ไข"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteService(service.id, service.name)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                    title="ลบ"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}

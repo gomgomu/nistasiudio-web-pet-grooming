@@ -2,9 +2,50 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as bcrypt from 'bcryptjs';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const tenantSlug = searchParams.get('tenantSlug');
+    const authHeader = req.headers.get('authorization');
+
+    // Platform-wide tenant listing requires valid authorization
+    if (!tenantSlug) {
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json(
+          { status: 'error', message: 'Unauthorized: Platform-wide tenant listing requires authorization' },
+          { status: 401 }
+        );
+      }
+      const token = authHeader.substring(7).trim();
+      try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+          return NextResponse.json(
+            { status: 'error', message: 'Unauthorized: Invalid token format' },
+            { status: 401 }
+          );
+        }
+        const payloadJson = Buffer.from(parts[1], 'base64').toString('utf-8');
+        const payload = JSON.parse(payloadJson);
+        const allowedRoles = ['SUPER_ADMIN', 'SAAS_ADMIN', 'TENANT_OWNER', 'TENANT_ADMIN'];
+        if (!payload || !allowedRoles.includes(payload.role)) {
+          return NextResponse.json(
+            { status: 'error', message: 'Forbidden: Insufficient privileges' },
+            { status: 403 }
+          );
+        }
+      } catch {
+        return NextResponse.json(
+          { status: 'error', message: 'Unauthorized: Malformed token' },
+          { status: 401 }
+        );
+      }
+    }
+
+    const whereClause = tenantSlug ? { slug: tenantSlug } : {};
+
     const tenants = await prisma.tenant.findMany({
+      where: whereClause,
       include: {
         branches: true,
         users: true,

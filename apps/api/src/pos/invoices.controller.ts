@@ -20,13 +20,16 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto, VoidInvoiceDto } from './dto/update-invoice.dto';
 import { QueryInvoicesDto } from './dto/query-invoice.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/guards/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { CurrentTenant } from '../common/decorators/current-tenant.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/auth.interface';
 
 @ApiTags('Invoices & POS')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('invoices')
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
@@ -87,6 +90,7 @@ export class InvoicesController {
   }
 
   @Patch(':id/void')
+  @Roles(UserRole.TENANT_OWNER, UserRole.TENANT_ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Void an invoice with reason' })
   @ApiResponse({ status: 200, description: 'Invoice voided successfully' })
   void(
@@ -100,6 +104,7 @@ export class InvoicesController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.TENANT_OWNER, UserRole.TENANT_ADMIN, UserRole.BRANCH_MANAGER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete a draft invoice' })
   @ApiResponse({ status: 200, description: 'Invoice deleted successfully' })
   delete(

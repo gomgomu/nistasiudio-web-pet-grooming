@@ -109,7 +109,7 @@ export default function StaffManagementPage() {
   const [staffEmail, setStaffEmail] = useState('');
   const [staffPhone, setStaffPhone] = useState('');
   const [staffRole, setStaffRole] = useState<UserRole>('GROOMER');
-  const [staffBranch, setStaffBranch] = useState('สาขาทองหล่อ (Main)');
+  const [staffBranch, setStaffBranch] = useState('b0000000-0000-0000-0000-000000000001');
   const [tempPassword, setTempPassword] = useState('password123');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -194,56 +194,69 @@ export default function StaffManagementPage() {
     SAAS_ADMIN: 'from-violet-600 to-purple-800',
   };
 
-  const handleAddStaff = (e: React.FormEvent) => {
+  const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName || !staffEmail) return;
 
-    const newStaff: StoreStaffMember = {
-      id: `s-${Date.now()}`,
-      name: fullName,
-      email: staffEmail.trim().toLowerCase(),
-      phone: staffPhone || '08X-XXX-XXXX',
-      role: staffRole,
-      roleTitle: roleTitles[staffRole] || 'พนักงาน',
-      branchName: staffBranch,
-      avatarText: fullName.charAt(0).toUpperCase(),
-      avatarGradient: gradients[staffRole] || 'from-blue-500 to-indigo-600',
-      isActive: true,
-      joinedAt: new Date().toISOString().split('T')[0],
-    };
+    try {
+      const res = await fetch('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: fullName,
+          email: staffEmail,
+          phone: staffPhone,
+          role: staffRole,
+          password: tempPassword,
+          branchId: staffBranch,
+        }),
+      });
 
-    const updated = [...staffList, newStaff];
-    updateStaffList(updated);
-    setIsAddModalOpen(false);
-    setToastMessage(`🎉 เพิ่มพนักงาน "${fullName}" สำเร็จเรียบร้อย!`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'ไม่สามารถเพิ่มพนักงานได้');
+      }
 
-    // Show Success Modal
-    setCreatedSuccessStaff({
-      name: fullName,
-      email: staffEmail,
-      phone: staffPhone || '08X-XXX-XXXX',
-      roleTitle: newStaff.roleTitle,
-      branchName: staffBranch,
-      tempPassword: tempPassword || 'password123',
-    });
-    setIsCopied(false);
+      const resJson = await res.json().catch(() => ({}));
+      const createdStaff = resJson.staff;
 
-    // Sync to PostgreSQL DB
-    fetch('/api/staff', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      const newStaff: StoreStaffMember = {
+        id: createdStaff?.id || `s-${Date.now()}`,
+        name: fullName,
+        email: staffEmail.trim().toLowerCase(),
+        phone: staffPhone || '08X-XXX-XXXX',
+        role: staffRole,
+        roleTitle: roleTitles[staffRole] || 'พนักงาน',
+        branchName: staffBranch,
+        avatarText: fullName.charAt(0).toUpperCase(),
+        avatarGradient: gradients[staffRole] || 'from-blue-500 to-indigo-600',
+        isActive: true,
+        joinedAt: new Date().toISOString().split('T')[0],
+      };
+
+      const updated = [...staffList, newStaff];
+      updateStaffList(updated);
+      setIsAddModalOpen(false);
+      setToastMessage(`🎉 เพิ่มพนักงาน "${fullName}" สำเร็จเรียบร้อย!`);
+
+      // Show Success Modal
+      setCreatedSuccessStaff({
         name: fullName,
         email: staffEmail,
-        phone: staffPhone,
-        role: staffRole,
-      }),
-    }).catch(console.error);
+        phone: staffPhone || '08X-XXX-XXXX',
+        roleTitle: newStaff.roleTitle,
+        branchName: staffBranch,
+        tempPassword: tempPassword || 'password123',
+      });
+      setIsCopied(false);
 
-    // Reset Form
-    setFullName('');
-    setStaffEmail('');
-    setStaffPhone('');
+      // Reset Form
+      setFullName('');
+      setStaffEmail('');
+      setStaffPhone('');
+    } catch (err: any) {
+      console.error('Failed to add staff:', err);
+    }
   };
 
   const handleOpenEdit = (s: StoreStaffMember) => {
@@ -702,9 +715,9 @@ export default function StaffManagementPage() {
                   onChange={(e) => setStaffBranch(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold focus:ring-2 focus:ring-[#0071e3] focus:outline-hidden"
                 >
-                  <option value="สาขาทองหล่อ (Main)">🏢 สาขาทองหล่อ (Main Headquarter)</option>
-                  <option value="สาขาอารีย์ (Branch 2)">📍 สาขาอารีย์ (Ari Express)</option>
-                  <option value="สาขาเอกมัย (Branch 3)">📍 สาขาเอกมัย (Ekkamai Grooming)</option>
+                  <option value="b0000000-0000-0000-0000-000000000001">🏢 สาขาทองหล่อ (Main Headquarter)</option>
+                  <option value="b0000000-0000-0000-0000-000000000002">📍 สาขาอารีย์ (Ari Express)</option>
+                  <option value="b0000000-0000-0000-0000-000000000003">📍 สาขาเอกมัย (Ekkamai Grooming)</option>
                 </select>
               </div>
 

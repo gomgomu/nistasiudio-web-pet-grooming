@@ -102,91 +102,91 @@ export async function POST(req: Request) {
       );
     }
 
-    let finalCustomerId = customerId;
-    let finalPetId = petId;
+    const newAppt = await prisma.$transaction(async (tx) => {
+      let finalCustomerId = customerId;
+      let finalPetId = petId;
 
-    // Auto-create customer if walk-in / new
-    if ((!finalCustomerId || finalCustomerId.startsWith('c-new-')) && customerName) {
-      const newCustomer = await prisma.customer.create({
+      // Auto-create customer if walk-in / new
+      if ((!finalCustomerId || finalCustomerId.startsWith('c-new-')) && customerName) {
+        const newCustomer = await tx.customer.create({
+          data: {
+            tenantId: tenant.id,
+            firstName: customerName,
+            lastName: '',
+            phone: customerPhone || '080-000-0000',
+            lineUserId: customerLine,
+          },
+        });
+        finalCustomerId = newCustomer.id;
+      }
+
+      // Auto-create pet if walk-in / new
+      if ((!finalPetId || finalPetId.startsWith('p-new-')) && petName && finalCustomerId) {
+        const newPet = await tx.pet.create({
+          data: {
+            tenantId: tenant.id,
+            customerId: finalCustomerId,
+            name: petName,
+            species: (petSpecies === 'CAT' ? 'CAT' : 'DOG') as any,
+            breed: petBreed || 'พันธุ์ผสม',
+            weight: petWeight ? parseFloat(String(petWeight)) : 3.5,
+          },
+        });
+        finalPetId = newPet.id;
+      }
+
+      if (!finalCustomerId || !finalPetId) {
+        throw new Error('Customer ID and Pet ID are required');
+      }
+
+      const customer = await tx.customer.findFirst({
+        where: { id: finalCustomerId, tenantId: tenant.id },
+      });
+
+      const pet = await tx.pet.findFirst({
+        where: { id: finalPetId, tenantId: tenant.id },
+      });
+
+      if (!customer || !pet) {
+        throw new Error('Customer or Pet not found in this organization');
+      }
+
+      const mainBranch = await tx.branch.findFirst({
+        where: { tenantId: tenant.id },
+      });
+
+      const defaultService = serviceId
+        ? await tx.service.findFirst({ where: { id: serviceId, tenantId: tenant.id } })
+        : await tx.service.findFirst({ where: { tenantId: tenant.id } });
+
+      if (!defaultService) {
+        throw new Error('Service not found for this tenant');
+      }
+
+      const rawStart = startTime || startAt;
+      const rawEnd = endTime || endAt;
+      const start = rawStart ? new Date(rawStart) : new Date();
+      const end = rawEnd ? new Date(rawEnd) : new Date(start.getTime() + 60 * 60 * 1000);
+
+      return tx.appointment.create({
         data: {
           tenantId: tenant.id,
-          firstName: customerName,
-          lastName: '',
-          phone: customerPhone || '080-000-0000',
-          lineUserId: customerLine,
+          branchId: branchId || mainBranch?.id || '',
+          customerId: customer.id,
+          petId: pet.id,
+          serviceId: defaultService.id,
+          staffId: assignedStaffId || null,
+          startAt: start,
+          endAt: end,
+          status: 'CONFIRMED',
+          notes,
+        },
+        include: {
+          customer: true,
+          pet: true,
+          service: true,
         },
       });
-      finalCustomerId = newCustomer.id;
-    }
-
-    // Auto-create pet if walk-in / new
-    if ((!finalPetId || finalPetId.startsWith('p-new-')) && petName && finalCustomerId) {
-      const newPet = await prisma.pet.create({
-        data: {
-          tenantId: tenant.id,
-          customerId: finalCustomerId,
-          name: petName,
-          species: (petSpecies === 'CAT' ? 'CAT' : 'DOG') as any,
-          breed: petBreed || 'พันธุ์ผสม',
-          weight: petWeight ? parseFloat(String(petWeight)) : 3.5,
-        },
-      });
-      finalPetId = newPet.id;
-    }
-
-    if (!finalCustomerId || !finalPetId) {
-      return NextResponse.json(
-        { status: 'error', message: 'Customer ID and Pet ID are required' },
-        { status: 400 }
-      );
-    }
-
-    const customer = await prisma.customer.findFirst({
-      where: { id: finalCustomerId, tenantId: tenant.id },
-    });
-
-    const pet = await prisma.pet.findFirst({
-      where: { id: finalPetId, tenantId: tenant.id },
-    });
-
-    if (!customer || !pet) {
-      return NextResponse.json(
-        { status: 'error', message: 'Customer or Pet not found in this organization' },
-        { status: 404 }
-      );
-    }
-
-    const mainBranch = await prisma.branch.findFirst({
-      where: { tenantId: tenant.id },
-    });
-
-    const defaultService = serviceId
-      ? await prisma.service.findFirst({ where: { id: serviceId, tenantId: tenant.id } })
-      : await prisma.service.findFirst({ where: { tenantId: tenant.id } });
-
-    const rawStart = startTime || startAt;
-    const rawEnd = endTime || endAt;
-    const start = rawStart ? new Date(rawStart) : new Date();
-    const end = rawEnd ? new Date(rawEnd) : new Date(start.getTime() + 60 * 60 * 1000);
-
-    const newAppt = await prisma.appointment.create({
-      data: {
-        tenantId: tenant.id,
-        branchId: branchId || mainBranch?.id || '',
-        customerId: customer.id,
-        petId: pet.id,
-        serviceId: defaultService?.id || '',
-        staffId: assignedStaffId || null,
-        startAt: start,
-        endAt: end,
-        status: 'CONFIRMED',
-        notes,
-      },
-      include: {
-        customer: true,
-        pet: true,
-        service: true,
-      },
     });
 
     return NextResponse.json({

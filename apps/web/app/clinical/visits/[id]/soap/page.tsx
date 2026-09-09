@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, use } from 'react';
+import React, { useState, useEffect, use } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import {
   Stethoscope,
@@ -166,12 +167,38 @@ const MOCK_SOAP_DATA: SoapNoteData = {
 
 export default function SoapWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
+  const { user } = useAuth();
+  const isVet = user?.role === 'VETERINARIAN';
   const [data, setData] = useState<SoapNoteData>(MOCK_SOAP_DATA);
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>(MOCK_PRESCRIPTIONS);
   const [activeTab, setActiveTab] = useState<'SOAP' | 'PRESCRIPTIONS' | 'ATTACHMENTS' | 'HISTORY'>('SOAP');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [auditNote, setAuditNote] = useState<string>('');
+
+  useEffect(() => {
+    const fetchVisit = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('petflow_token') : null;
+        const res = await fetch(`/api/v1/clinical/visits/${resolvedParams.id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const visitData = json?.data || json;
+          const formatted = {
+            ...visitData,
+            visitId: visitData.id || visitData.visitId || resolvedParams.id,
+            vitals: visitData.vitals || {},
+          };
+          setData(formatted as any);
+        }
+      } catch (err) {
+        console.error('Failed to load visit:', err);
+      }
+    };
+    fetchVisit();
+  }, [resolvedParams.id]);
 
   // Modals
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
@@ -202,8 +229,9 @@ export default function SoapWorkspacePage({ params }: { params: Promise<{ id: st
   const handleSaveSoap = async () => {
     setIsSaving(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('petflow_token') : null;
-      await fetch(`/api/v1/clinical/visits/${data.visitId}/soap`, {
+      const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('petflow_current_user') || '{}') : null;
+      const token = (typeof window !== 'undefined' ? localStorage.getItem('petflow_token') : null) || storedUser?.accessToken;
+      const res = await fetch(`/api/v1/clinical/visits/${data.visitId}/soap`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -219,33 +247,41 @@ export default function SoapWorkspacePage({ params }: { params: Promise<{ id: st
           authorNote: auditNote || 'บันทึก/ปรับปรุงข้อมูล SOAP Note',
         }),
       });
-    } catch (err) {
-      console.warn('Could not sync SOAP note to backend API:', err);
-    } finally {
-      setIsSaving(false);
+
+      if (!res.ok) {
+        throw new Error(res.status === 401 || res.status === 403
+          ? 'ไม่มีสิทธิ์ในการบันทึกข้อมูล หรือ Session หมดอายุ กรุณาเข้าสู่ระบบใหม่'
+          : 'ไม่สามารถบันทึก SOAP Note ได้');
+      }
+
       setSaveSuccess(true);
       const newHistory = [
         {
           id: `h-${Date.now()}`,
           recordType: 'SOAP',
-          authorName: 'น.สพ. วรปรัชญ์ เกียรติสกุล',
+          authorName: storedUser?.name || 'น.สพ. วรปรัชญ์ เกียรติสกุล',
           createdAt: new Date().toISOString(),
           summary: auditNote || 'บันทึก/ปรับปรุงข้อมูล SOAP Note',
           snapshot: { diagnosis: data.diagnosis, vitals: data.vitals },
         },
         ...data.historyEntries,
       ];
-      setData((prev) => ({ ...prev, historyEntries: newHistory }));
+      setData((prev: any) => ({ ...prev, historyEntries: newHistory }));
       setAuditNote('');
       setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.warn('Could not sync SOAP note to backend API:', err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleCompleteVisit = async () => {
     setIsSaving(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('petflow_token') : null;
-      await fetch(`/api/v1/clinical/visits/${data.visitId}/soap`, {
+      const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('petflow_current_user') || '{}') : null;
+      const token = (typeof window !== 'undefined' ? localStorage.getItem('petflow_token') : null) || storedUser?.accessToken;
+      const res = await fetch(`/api/v1/clinical/visits/${data.visitId}/soap`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -256,13 +292,20 @@ export default function SoapWorkspacePage({ params }: { params: Promise<{ id: st
           authorNote: 'เสร็จสิ้นการตรวจรักษา',
         }),
       });
+
+      if (!res.ok) {
+        throw new Error(res.status === 401 || res.status === 403
+          ? 'ไม่มีสิทธิ์ในการบันทึกข้อมูล หรือ Session หมดอายุ กรุณาเข้าสู่ระบบใหม่'
+          : 'ไม่สามารถเสร็จสิ้นการตรวจรักษาได้');
+      }
+
+      setData((prev: any) => ({ ...prev, status: 'COMPLETED' }));
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.warn('Could not sync visit completion to backend API:', err);
     } finally {
       setIsSaving(false);
-      setData((prev) => ({ ...prev, status: 'COMPLETED' }));
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
     }
   };
 
@@ -379,24 +422,28 @@ export default function SoapWorkspacePage({ params }: { params: Promise<{ id: st
               <CheckCircle2 className="w-4 h-4" /> บันทึกข้อมูลสำเร็จ
             </span>
           )}
-          <button
-            type="button"
-            onClick={handleSaveSoap}
-            disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold transition active:scale-95"
-          >
-            <Save className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-            {isSaving ? 'กำลังบันทึก...' : 'บันทึก (Save SOAP)'}
-          </button>
-          <button
-            type="button"
-            onClick={handleCompleteVisit}
-            disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0071e3] hover:bg-[#005bb5] text-white text-xs font-bold shadow-md shadow-blue-500/20 transition active:scale-95"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            ตรวจเสร็จสิ้น (Complete Visit)
-          </button>
+          {isVet && (
+            <>
+              <button
+                type="button"
+                onClick={handleSaveSoap}
+                disabled={isSaving}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold transition active:scale-95"
+              >
+                <Save className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                {isSaving ? 'กำลังบันทึก...' : 'บันทึก (Save SOAP)'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCompleteVisit}
+                disabled={isSaving}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0071e3] hover:bg-[#005bb5] text-white text-xs font-bold shadow-md shadow-blue-500/20 transition active:scale-95"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                ตรวจเสร็จสิ้น (Complete Visit)
+              </button>
+            </>
+          )}
           <Link
             href="/pos"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer"
@@ -406,6 +453,15 @@ export default function SoapWorkspacePage({ params }: { params: Promise<{ id: st
           </Link>
         </div>
       </div>
+
+      {!isVet && (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-xs">
+          <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span>
+            <strong>โหมดดูเวชระเบียน (Read-Only)</strong>: สิทธิ์การแก้ไข SOAP Note และบันทึกเวชระเบียนจำกัดเฉพาะสัตวแพทย์ (Veterinarian) เท่านั้น
+          </span>
+        </div>
+      )}
 
       {/* Patient & Owner Context Banner */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-apple">

@@ -16,6 +16,8 @@ import { UpdateVaccinationDto } from './dto/update-vaccination.dto';
 import { QueryVaccinationsDto } from './dto/query-vaccinations.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/guards/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { CurrentTenant } from '../common/decorators/current-tenant.decorator';
 
 @ApiTags('Veterinary Vaccinations & Immunization')
@@ -36,6 +38,7 @@ export class VaccinationsController {
   }
 
   @Post('vaccinations')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Create a new vaccination record' })
   @ApiResponse({ status: 201, description: 'Vaccination record created' })
   createVaccination(
@@ -57,6 +60,7 @@ export class VaccinationsController {
   }
 
   @Patch('vaccinations/:id')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Update vaccination record' })
   @ApiParam({ name: 'id', description: 'Vaccination UUID' })
   @ApiResponse({ status: 200, description: 'Vaccination record updated' })
@@ -69,6 +73,7 @@ export class VaccinationsController {
   }
 
   @Delete('vaccinations/:id')
+  @Roles(UserRole.VETERINARIAN)
   @ApiOperation({ summary: 'Delete vaccination record' })
   @ApiParam({ name: 'id', description: 'Vaccination UUID' })
   @ApiResponse({ status: 200, description: 'Vaccination record deleted' })

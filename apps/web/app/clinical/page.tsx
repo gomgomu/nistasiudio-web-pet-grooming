@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Stethoscope,
@@ -178,12 +178,29 @@ const MOCK_VISITS: ClinicVisitItem[] = [
 ];
 
 export default function ClinicalHubPage() {
+  const [visits, setVisits] = useState<ClinicVisitItem[]>(MOCK_VISITS);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterType, setFilterType] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('petflow_clinical_visits');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setVisits((prev) => {
+            const storedIds = new Set(parsed.map((p: any) => p.id));
+            const uniqueMock = prev.filter((m) => !storedIds.has(m.id));
+            return [...parsed, ...uniqueMock];
+          });
+        }
+      }
+    } catch {}
+  }, []);
+
   const filteredVisits = useMemo(() => {
-    return MOCK_VISITS.filter((v) => {
+    return visits.filter((v) => {
       if (filterStatus !== 'ALL' && v.status !== filterStatus) return false;
       if (filterType !== 'ALL' && v.visitType !== filterType) return false;
       const s = searchTerm.toLowerCase().trim();
@@ -197,11 +214,11 @@ export default function ClinicalHubPage() {
         (v.visitNumber && v.visitNumber.toLowerCase().includes(s))
       );
     });
-  }, [filterStatus, filterType, searchTerm]);
+  }, [visits, filterStatus, filterType, searchTerm]);
 
-  const waitingCount = MOCK_VISITS.filter((v) => v.status === 'WAITING').length;
-  const inConsultCount = MOCK_VISITS.filter((v) => v.status === 'IN_CONSULTATION' || v.status === 'EXAMINATION' || v.status === 'TREATMENT').length;
-  const completedCount = MOCK_VISITS.filter((v) => v.status === 'COMPLETED').length;
+  const waitingCount = visits.filter((v) => v.status === 'WAITING').length;
+  const inConsultCount = visits.filter((v) => v.status === 'IN_CONSULTATION' || v.status === 'EXAMINATION' || v.status === 'TREATMENT').length;
+  const completedCount = visits.filter((v) => v.status === 'COMPLETED').length;
 
   return (
     <div className="space-y-6">
